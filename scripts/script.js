@@ -16,7 +16,46 @@ const db = firebase.database();
 let currentFilter = 'Biasa';
 let selectedScheduleId = null;
 
-// Clock & Tab
+// --- SECURITY: ANTI DEVTOOLS & RIGHT CLICK (V2 - TOUGHER) ---
+function securityAlert(msg) {
+    Swal.fire({
+        icon: 'error',
+        title: 'Akses Dilarang!',
+        text: msg,
+        background: '#162238',
+        color: '#fff',
+        confirmButtonColor: '#22d3ee',
+        timer: 2500,
+        showClass: { popup: 'animate__animated animate__shakeX' }
+    });
+}
+
+// 1. Matikan Klik Kanan
+document.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    securityAlert("Klik kanan dinonaktifkan demi keamanan. 🙏");
+});
+
+// 2. Matikan Semua Shortcut DevTools (Termasuk Ctrl+Shift+C)
+document.addEventListener('keydown', e => {
+    // F12
+    const isF12 = e.keyCode === 123;
+    // Ctrl+Shift+I (73), Ctrl+Shift+C (67), Ctrl+Shift+J (74)
+    const isInspect = e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 67 || e.keyCode === 74);
+    // Ctrl+U (View Source)
+    const isViewSource = e.ctrlKey && e.keyCode === 85;
+    // Cmd+Opt+I/C/J (Untuk Mac)
+    const isMacDev = e.metaKey && e.altKey && (e.keyCode === 73 || e.keyCode === 67 || e.keyCode === 74);
+
+    if (isF12 || isInspect || isViewSource || isMacDev) {
+        e.preventDefault();
+        e.stopPropagation();
+        securityAlert("Jangan ya kak yaa! 🚫");
+        return false;
+    }
+});
+
+// --- CLOCK & TABS ---
 setInterval(() => {
     document.getElementById('realtime-clock').innerText = new Date().toLocaleString('id-ID', { 
         weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' 
@@ -37,10 +76,10 @@ function setFilter(type) {
     
     const containerJam = document.getElementById('container-jam');
     if (type === 'Besar') {
-        containerJam.innerHTML = `<input type="text" id="input-jam" placeholder="Jam (Mis: 17.30)" class="w-full bg-[#0b1426] border border-gray-600 p-2 rounded text-sm text-white outline-none focus:border-cyan-500">`;
+        containerJam.innerHTML = `<input type="text" id="input-jam" placeholder="Jam Manual" class="w-full bg-[#0b1426] border border-gray-600 p-2 rounded text-sm text-white outline-none">`;
     } else {
         containerJam.innerHTML = `
-            <select id="input-jam" class="w-full bg-[#0b1426] border border-gray-600 p-2 rounded text-sm text-white outline-none focus:border-cyan-500">
+            <select id="input-jam" class="w-full bg-[#0b1426] border border-gray-600 p-2 rounded text-sm text-white outline-none">
                 <optgroup label="Sabtu"><option value="Sabtu 18.00">Sabtu 18.00</option></optgroup>
                 <optgroup label="Minggu">
                     <option value="Minggu 06.00">Minggu 06.00</option>
@@ -53,7 +92,7 @@ function setFilter(type) {
     renderSchedules();
 }
 
-// Logika Anggota
+// --- LOGIKA DATA (MEMBER & SCHEDULE) ---
 function addMember() {
     const input = document.getElementById('member-name');
     if(input.value) db.ref('members').push({ name: input.value }).then(() => input.value = "");
@@ -71,12 +110,11 @@ db.ref('members').on('value', snapshot => {
     });
 });
 
-// Logika Jadwal
 function buatJadwal() {
     const tgl = document.getElementById('input-tgl').value;
     const jam = document.getElementById('input-jam').value;
     const ket = document.getElementById('input-nama-misa').value || "Misa";
-    if(!tgl || !jam) return alert("Lengkapi data!");
+    if(!tgl || !jam) return securityAlert("Lengkapi data!");
     db.ref('schedules').push({ tanggal: tgl, jam: jam, namaMisa: ket, kategori: currentFilter, petugas: {} });
 }
 
@@ -94,7 +132,7 @@ function renderSchedules() {
             if (data.petugas) {
                 Object.keys(data.petugas).forEach(k => {
                     count++;
-                    petugasHtml += `<span class="bg-[#0b1426] border border-gray-700 px-3 py-1 rounded-full text-xs text-cyan-400 flex items-center gap-1">${data.petugas[k]} <button onclick="removePetugas('${id}','${k}')" class="text-red-500 font-bold">×</button></span>`;
+                    petugasHtml += `<span class="bg-[#0b1426] border border-gray-700 px-3 py-1 rounded-full text-xs text-cyan-400 flex items-center gap-1">${data.petugas[k]} <button onclick="removePetugas('${id}','${k}')" class="text-red-500 font-bold ml-1">×</button></span>`;
                 });
             }
 
@@ -102,13 +140,13 @@ function renderSchedules() {
                 <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div class="flex-1">
                         <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase ${data.kategori==='Besar'?'bg-red-900 text-red-200':'bg-blue-900 text-blue-200'}">${data.kategori}</span>
-                        <h4 class="text-lg font-bold text-white mt-1">${data.jam} <span class="text-gray-500 font-normal">| ${data.namaMisa}</span></h4>
-                        <p class="text-xs text-gray-500 font-mono">${data.tanggal}</p>
+                        <h4 class="text-lg font-bold text-white mt-1">${data.jam}</h4>
+                        <p class="text-xs text-gray-500 font-medium italic">${data.namaMisa} (${data.tanggal})</p>
                     </div>
-                    <div class="flex flex-wrap gap-2 flex-1 justify-start md:justify-center">${petugasHtml || '<span class="text-gray-700 italic text-sm">Belum ada petugas</span>'}</div>
+                    <div class="flex flex-wrap gap-2 flex-1 justify-start md:justify-center">${petugasHtml || '<span class="text-gray-700 italic text-sm">Kosong</span>'}</div>
                     <div class="flex items-center gap-3 min-w-[150px] justify-end">
                         <span class="text-xs font-mono text-gray-500">${count}/3</span>
-                        ${count < 3 ? `<button onclick="openDaftar('${id}','${data.jam}')" class="bg-cyan-500 hover:bg-cyan-400 text-[#0b1426] px-4 py-2 rounded-lg text-xs font-bold transition">Daftar</button>` : `<button disabled class="bg-gray-800 text-gray-600 px-4 py-2 rounded-lg text-xs font-bold">Full</button>`}
+                        ${count < 3 ? `<button onclick="openDaftar('${id}','${data.jam}')" class="bg-cyan-500 hover:bg-cyan-400 text-[#0b1426] px-4 py-2 rounded-lg text-xs font-bold transition">DAFTAR</button>` : `<button disabled class="bg-gray-800 text-gray-600 px-4 py-2 rounded-lg text-xs font-bold">FULL</button>`}
                         <button onclick="hapusSatuJadwal('${id}')" class="text-red-500 hover:text-red-400 p-2">🗑️</button>
                     </div>
                 </div>`;
@@ -118,13 +156,31 @@ function renderSchedules() {
 
 function openDaftar(id, jam) { selectedScheduleId = id; document.getElementById('modal-info').innerText = `Misa Jam: ${jam}`; document.getElementById('modal-daftar').classList.remove('hidden'); }
 function closeModal() { document.getElementById('modal-daftar').classList.add('hidden'); }
+
 document.getElementById('confirm-daftar').onclick = function() {
     const name = document.getElementById('select-member').value;
     if(name) db.ref(`schedules/${selectedScheduleId}/petugas`).push(name).then(() => closeModal());
 }
 
-function hapusSatuJadwal(id) { if(confirm("Hapus jadwal ini?")) db.ref(`schedules/${id}`).remove(); }
-function removePetugas(sId, pKey) { if(confirm("Batalkan tugas?")) db.ref(`schedules/${sId}/petugas/${pKey}`).remove(); }
-function resetSemuaJadwal() { if (prompt("Ketik 'HAPUS' untuk konfirmasi:") === "HAPUS") db.ref('schedules').set(null); }
+function hapusSatuJadwal(id) {
+    Swal.fire({
+        title: 'Hapus?', icon: 'warning', showCancelButton: true,
+        confirmButtonColor: '#d33', background: '#162238', color: '#fff'
+    }).then(res => { if(res.isConfirmed) db.ref(`schedules/${id}`).remove(); });
+}
+
+function removePetugas(sId, pKey) {
+    Swal.fire({
+        title: 'Batal Tugas?', icon: 'question', showCancelButton: true,
+        background: '#162238', color: '#fff'
+    }).then(res => { if(res.isConfirmed) db.ref(`schedules/${sId}/petugas/${pKey}`).remove(); });
+}
+
+function resetSemuaJadwal() {
+    Swal.fire({
+        title: 'RESET DATA?', text: "Ketik 'HAPUS'", input: 'text',
+        showCancelButton: true, background: '#162238', color: '#fff'
+    }).then(res => { if(res.value === 'HAPUS') db.ref('schedules').set(null); });
+}
 
 setFilter('Biasa');
