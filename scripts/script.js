@@ -16,7 +16,7 @@ const db = firebase.database();
 let currentFilter = 'Biasa';
 let selectedScheduleId = null;
 
-// --- 1. THEME SYSTEM ---
+// THEME SYSTEM (gelap dan terang)---
 function initTheme() {
     const saved = localStorage.getItem('theme') || 'dark';
     applyTheme(saved);
@@ -41,7 +41,7 @@ function toggleTheme() {
 }
 initTheme();
 
-// --- 2. SECURITY ---
+// SECURITY ---
 function securityAlert(msg) {
     const isDark = document.documentElement.classList.contains('dark');
     Swal.fire({
@@ -59,7 +59,7 @@ document.addEventListener('keydown', e => {
     }
 });
 
-// --- 3. AUTO-CLEANUP ---
+// AUTO-CLEANUP ato istilah gaulnya auto apus kalo udh lewat tanggalnya ---
 function jalankanAutoCleanup() {
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -71,7 +71,7 @@ function jalankanAutoCleanup() {
 }
 jalankanAutoCleanup();
 
-// --- 4. ANGGOTA ---
+//ANGGOTA ---
 function addMember() {
     const name = document.getElementById('member-name').value;
     if(!name) return;
@@ -96,7 +96,7 @@ db.ref('members').on('value', snap => {
     });
 });
 
-// --- 5. JADWAL (UPDATE LIMIT 3/5) ---
+// JADWAL (UPDATE LIMIT 3 untuk misa biasa dan 5 untuk misa besar) ---
 setInterval(() => {
     document.getElementById('realtime-clock').innerText = new Date().toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }, 1000);
