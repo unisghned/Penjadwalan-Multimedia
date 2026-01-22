@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jadwal Multimedi St.Martinus</title>
+    <title>Multimedia Schedule Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+    
     <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
@@ -19,72 +21,87 @@
         .tab-btn { @apply px-6 py-3 font-bold border-b-2 border-transparent text-gray-400 transition-all; }
         .active-tab { @apply border-cyan-500 text-cyan-600 dark:text-cyan-400 animate__animated animate__pulse; }
         .filter-active { @apply bg-cyan-500 text-white shadow-lg shadow-cyan-500/30; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body id="theme-body" class="bg-slate-50 dark:bg-[#0b1426] text-slate-900 dark:text-slate-200 min-h-screen font-sans transition-all">
 
-    <nav class="bg-white dark:bg-[#162238] border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-50 shadow-md transition-all">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2 animate__animated animate__fadeInLeft">
-                🎥 Penjadwalan <span class="text-cyan-500">Multimedia</span>
-            </h1>
-            <div class="flex items-center gap-4 animate__animated animate__fadeInRight">
-                <button onclick="toggleTheme()" class="p-2.5 rounded-2xl bg-slate-100 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-700 hover:rotate-12 transition-all shadow-sm">
-                    <span id="theme-icon" class="text-lg">☀️</span>
-                </button>
-                <div id="realtime-clock" class="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400"></div>
-            </div>
+    <div id="login-screen" class="fixed inset-0 bg-slate-50 dark:bg-[#0b1426] z-[999] flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#162238] p-10 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-700 max-w-sm w-full text-center animate__animated animate__fadeIn">
+            <div class="text-5xl mb-6">🎥</div>
+            <h2 class="text-3xl font-black mb-2 dark:text-white tracking-tighter uppercase">Multimedia</h2>
+            <p class="text-slate-400 text-[10px] font-black tracking-[0.2em] mb-8 uppercase">Akses Khusus Tim</p>
+            <button onclick="loginGoogle()" class="w-full bg-slate-900 dark:bg-white text-white dark:text-[#0b1426] py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 hover:scale-105 transition-all shadow-xl">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" width="18">
+                MASUK DENGAN GOOGLE
+            </button>
         </div>
-    </nav>
-
-    <div class="container mx-auto p-4 max-w-5xl">
-        <div class="flex justify-center gap-4 mb-8 border-b border-slate-200 dark:border-slate-800">
-            <button onclick="switchTab('jadwal')" id="btn-tab-jadwal" class="tab-btn active-tab">📅 JADWAL</button>
-            <button onclick="switchTab('anggota')" id="btn-tab-anggota" class="tab-btn">👥 ANGGOTA</button>
-        </div>
-
-        <section id="tab-jadwal" class="tab-content space-y-6">
-            <div class="bg-white dark:bg-[#162238] p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl animate__animated animate__fadeInUp transition-all">
-                <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                    <h3 class="font-black text-slate-700 dark:text-cyan-400 tracking-tight">MANAJEMEN JADWAL</h3>
-                    <div class="flex bg-slate-100 dark:bg-[#0b1426] p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 w-full md:w-auto">
-                        <button onclick="setFilter('Biasa')" id="filter-biasa" class="flex-1 px-6 py-2 rounded-xl text-xs font-black transition-all filter-active">BIASA</button>
-                        <button onclick="setFilter('Besar')" id="filter-besar" class="flex-1 px-6 py-2 rounded-xl text-xs font-black transition-all text-slate-500">BESAR</button>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <input type="date" id="input-tgl" class="bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl text-sm outline-none focus:ring-2 ring-cyan-500 text-slate-900 dark:text-white transition-all">
-                    <div id="container-jam"></div>
-                    <input type="text" id="input-nama-misa" placeholder="Nama Misa" class="bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl text-sm outline-none focus:ring-2 ring-cyan-500 text-slate-900 dark:text-white transition-all">
-                    <button onclick="buatJadwal()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-black rounded-2xl shadow-lg hover:shadow-cyan-500/40 transition-all py-3">PUBLISH</button>
-                </div>
-                <button onclick="resetSemuaJadwal()" class="mt-4 text-[10px] text-red-500 dark:text-red-400 font-bold hover:underline opacity-50 hover:opacity-100 transition-all">RESET SEMUA DATA</button>
-            </div>
-
-            <div id="schedule-list" class="space-y-4"></div>
-        </section>
-
-        <section id="tab-anggota" class="tab-content hidden animate__animated animate__fadeIn">
-            <div class="bg-white dark:bg-[#162238] p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl mb-6">
-                <h3 class="font-black mb-4 text-slate-700 dark:text-cyan-400 tracking-tight">REGISTRASI ANGGOTA</h3>
-                <div class="flex flex-col md:flex-row gap-4">
-                    <input type="text" id="member-name" placeholder="Nama Lengkap" class="flex-1 bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl outline-none text-slate-900 dark:text-white focus:ring-2 ring-cyan-500">
-                    <button onclick="addMember()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-10 py-3 font-black rounded-2xl transition-all shadow-lg">SIMPAN</button>
-                </div>
-            </div>
-            <div id="members-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
-        </section>
     </div>
 
-    <div id="modal-daftar" class="fixed inset-0 bg-slate-900/60 dark:bg-black/80 hidden flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
-        <div class="bg-white dark:bg-[#162238] p-8 rounded-[2.5rem] max-w-sm w-full shadow-2xl animate__animated animate__bounceIn">
-            <h3 class="text-2xl font-black mb-1 text-slate-800 dark:text-white text-center tracking-tighter">PILIH PETUGAS</h3>
-            <p id="modal-info" class="text-[10px] text-cyan-600 font-bold mb-6 text-center uppercase tracking-widest"></p>
-            <select id="select-member" class="w-full bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-4 rounded-2xl mb-8 text-slate-900 dark:text-white outline-none focus:ring-2 ring-cyan-500"></select>
-            <div class="flex gap-4">
-                <button onclick="closeModal()" class="flex-1 text-slate-400 font-black hover:text-red-500 transition-all">BATAL</button>
-                <button id="confirm-daftar" class="flex-[2] bg-cyan-600 text-white py-4 rounded-2xl font-black shadow-lg hover:shadow-cyan-500/40 transition-all">DAFTAR</button>
+    <div id="app-content" class="hidden">
+        <nav class="bg-white dark:bg-[#162238] border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-50 shadow-md transition-all">
+            <div class="container mx-auto flex justify-between items-center">
+                <h1 class="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                    🎥 Penjadwalan <span class="text-cyan-500">Multimedia</span>
+                </h1>
+                <div class="flex items-center gap-4">
+                    <button onclick="logout()" class="text-[10px] font-black text-red-500 uppercase mr-2 hover:underline">Keluar</button>
+                    <button onclick="toggleTheme()" class="p-2.5 rounded-2xl bg-slate-100 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-700 hover:rotate-12 transition-all">
+                        <span id="theme-icon" class="text-lg">☀️</span>
+                    </button>
+                    <div id="realtime-clock" class="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400"></div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container mx-auto p-4 max-w-5xl">
+            <div class="flex justify-center gap-4 mb-8 border-b border-slate-200 dark:border-slate-800">
+                <button onclick="switchTab('jadwal')" id="btn-tab-jadwal" class="tab-btn active-tab">📅 JADWAL</button>
+                <button onclick="switchTab('anggota')" id="btn-tab-anggota" class="tab-btn">👥 ANGGOTA</button>
+            </div>
+
+            <section id="tab-jadwal" class="tab-content space-y-6">
+                <div class="bg-white dark:bg-[#162238] p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl animate__animated animate__fadeInUp">
+                    <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                        <h3 class="font-black text-slate-700 dark:text-cyan-400 tracking-tight uppercase text-sm">Manajemen Jadwal</h3>
+                        <div class="flex bg-slate-100 dark:bg-[#0b1426] p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 w-full md:w-auto">
+                            <button onclick="setFilter('Biasa')" id="filter-biasa" class="flex-1 px-6 py-2 rounded-xl text-xs font-black transition-all filter-active">BIASA</button>
+                            <button onclick="setFilter('Besar')" id="filter-besar" class="flex-1 px-6 py-2 rounded-xl text-xs font-black transition-all text-slate-500">BESAR</button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <input type="date" id="input-tgl" class="bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl text-sm outline-none focus:ring-2 ring-cyan-500 text-slate-900 dark:text-white transition-all">
+                        <div id="container-jam"></div>
+                        <input type="text" id="input-nama-misa" placeholder="Nama Misa" class="bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl text-sm outline-none focus:ring-2 ring-cyan-500 text-slate-900 dark:text-white transition-all">
+                        <button onclick="buatJadwal()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-black rounded-2xl shadow-lg transition-all py-3">PUBLISH</button>
+                    </div>
+                    <button onclick="resetSemuaJadwal()" class="mt-4 text-[10px] text-red-500 font-bold hover:underline opacity-50">RESET SEMUA DATA</button>
+                </div>
+                <div id="schedule-list" class="space-y-4"></div>
+            </section>
+
+            <section id="tab-anggota" class="tab-content hidden animate__animated animate__fadeIn">
+                <div class="bg-white dark:bg-[#162238] p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl mb-6">
+                    <h3 class="font-black mb-4 text-slate-700 dark:text-cyan-400 tracking-tight uppercase text-sm">Registrasi Anggota</h3>
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <input type="text" id="member-name" placeholder="Nama Lengkap" class="flex-1 bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl outline-none text-slate-900 dark:text-white focus:ring-2 ring-cyan-500">
+                        <button onclick="addMember()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-10 py-3 font-black rounded-2xl shadow-lg transition-all">SIMPAN</button>
+                    </div>
+                </div>
+                <div id="members-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+            </section>
+        </div>
+
+        <div id="modal-daftar" class="fixed inset-0 bg-slate-900/60 dark:bg-black/80 hidden flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
+            <div class="bg-white dark:bg-[#162238] p-8 rounded-[2.5rem] max-w-sm w-full shadow-2xl border dark:border-slate-700 animate__animated animate__bounceIn">
+                <h3 class="text-2xl font-black mb-1 text-slate-800 dark:text-white text-center tracking-tighter">PILIH PETUGAS</h3>
+                <p id="modal-info" class="text-[10px] text-cyan-600 font-bold mb-6 text-center uppercase tracking-widest"></p>
+                <select id="select-member" class="w-full bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-4 rounded-2xl mb-8 dark:text-white outline-none focus:ring-2 ring-cyan-500"></select>
+                <div class="flex gap-4">
+                    <button onclick="closeModal()" class="flex-1 text-slate-400 font-black hover:text-red-500 transition-all uppercase text-xs">Batal</button>
+                    <button id="confirm-daftar" class="flex-[2] bg-cyan-600 text-white py-4 rounded-2xl font-black shadow-lg hover:shadow-cyan-500/40 transition-all uppercase text-xs">Daftar</button>
+                </div>
             </div>
         </div>
     </div>
@@ -92,5 +109,3 @@
     <script src="scripts/script.js"></script>
 </body>
 </html>
-
-
