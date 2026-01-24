@@ -1,5 +1,3 @@
-
-
 // --- 1. CONFIG FIREBASE ---
 const firebaseConfig = {
     apiKey: "AIzaSyC3R5kIDwXl2-Mvcu3Jv9UENLxGe5j2fUM",
@@ -171,11 +169,27 @@ function renderSchedules() {
         const list = document.getElementById('schedule-list');
         if(!list) return;
         list.innerHTML = "";
+        
+        // Ambil tanggal hari ini (set jam ke 00:00 biar akurat)
+        const hariIni = new Date();
+        hariIni.setHours(0, 0, 0, 0);
+
         snap.forEach(child => {
-            const data = child.val(); if(data.kategori !== currentFilter) return;
+            const data = child.val(); 
+            if(data.kategori !== currentFilter) return;
+
+            // LOGIC FILTER TANGGAL:
+            // Ubah string tanggal dari Firebase (YYYY-MM-DD) jadi objek Date
+            const tglJadwal = new Date(data.tanggal);
+            tglJadwal.setHours(0, 0, 0, 0);
+
+            // Jika tanggal jadwal lebih kecil (lama) dari hari ini, jangan di-render
+            if (tglJadwal < hariIni) return;
+
             const lim = data.kategori === 'Besar' ? 5 : 3;
             const count = data.petugas ? Object.keys(data.petugas).length : 0;
             let petugasHtml = "";
+            
             if(data.petugas) {
                 Object.keys(data.petugas).forEach(k => {
                     petugasHtml += `<span class="bg-slate-100 dark:bg-[#0b1426] border dark:border-slate-700 px-3 py-1.5 rounded-full text-[10px] text-cyan-600 font-black">
@@ -183,11 +197,20 @@ function renderSchedules() {
                     </span>`;
                 });
             }
+
             list.innerHTML += `
             <div class="bg-white dark:bg-[#162238] p-6 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl border border-slate-200 dark:border-slate-700 animate__animated animate__fadeInUp">
-                <div class="flex-1"><span class="text-[8px] font-black px-2 py-0.5 rounded bg-cyan-600 text-white uppercase">${data.kategori}</span><h4 class="text-2xl font-black dark:text-white mt-1">${data.jam}</h4><p class="text-[10px] text-slate-400 font-bold uppercase">${data.namaMisa} • ${data.tanggal}</p></div>
+                <div class="flex-1">
+                    <span class="text-[8px] font-black px-2 py-0.5 rounded bg-cyan-600 text-white uppercase">${data.kategori}</span>
+                    <h4 class="text-2xl font-black dark:text-white mt-1">${data.jam}</h4>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase">${data.namaMisa} • ${data.tanggal}</p>
+                </div>
                 <div class="flex flex-wrap gap-2 flex-1 justify-center">${petugasHtml || '<span class="text-slate-300 dark:text-slate-600 text-[10px] font-black uppercase tracking-widest text-center">Empty</span>'}</div>
-                <div class="flex items-center gap-4 justify-end min-w-[160px]"><span class="text-xs font-black ${count>=lim?'text-red-500':'text-slate-300'} font-mono">${count}/${lim}</span><button onclick="openDaftar('${child.key}','${data.jam}')" class="bg-cyan-600 text-white px-8 py-3 rounded-2xl text-xs font-black ${count>=lim?'opacity-30 cursor-not-allowed':''}" ${count>=lim?'disabled':''}>${count>=lim?'FULL':'DAFTAR'}</button><button onclick="hapusSatuJadwal('${child.key}')" class="text-red-400">🗑️</button></div>
+                <div class="flex items-center gap-4 justify-end min-w-[160px]">
+                    <span class="text-xs font-black ${count>=lim?'text-red-500':'text-slate-300'} font-mono">${count}/${lim}</span>
+                    <button onclick="openDaftar('${child.key}','${data.jam}')" class="bg-cyan-600 text-white px-8 py-3 rounded-2xl text-xs font-black ${count>=lim?'opacity-30 cursor-not-allowed':''}" ${count>=lim?'disabled':''}>${count>=lim?'FULL':'DAFTAR'}</button>
+                    <button onclick="hapusSatuJadwal('${child.key}')" class="text-red-400">🗑️</button>
+                </div>
             </div>`;
         });
     });
