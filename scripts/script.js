@@ -294,17 +294,34 @@ function peringatanKeamanan() {
     });
 }
 
-// 1. Alert Shortcut (Pasti Muncul)
+// --- 5. FINAL SECURITY & CUSTOM MENU (OPTIMIZED) ---
+let kantongAjaib = ""; 
+let elemenTargetTerakhir = null;
+
+// 1. Integrasi Security Alert
+function peringatanKeamanan() {
+    Swal.fire({
+        icon: 'warning',
+        title: 'AKSES DIBATASI!',
+        text: 'Shortcut DevTools dimatikan untuk keamanan tim.',
+        background: '#162238',
+        color: '#fff',
+        confirmButtonColor: '#0891b2',
+        timer: 2000,
+        showConfirmButton: false
+    });
+}
+
 document.onkeydown = function(e) {
     if (e.keyCode == 123 || 
-        (e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0) || e.keyCode == 'C'.charCodeAt(0))) || 
-        (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0))) {
+        (e.ctrlKey && e.shiftKey && [73, 74, 67].includes(e.keyCode)) || 
+        (e.ctrlKey && e.keyCode == 85)) {
         peringatanKeamanan();
         return false;
     }
 };
 
-// 2. Custom Menu HTML & Logic
+// 2. Custom Menu Setup
 const menuHTML = `
 <div id="custom-menu" class="hidden fixed bg-white dark:bg-[#162238] border border-slate-200 dark:border-slate-700 shadow-2xl rounded-xl py-2 z-[9999] min-w-[150px]">
     <div id="menu-copy" class="px-4 py-2 hover:bg-cyan-50 dark:hover:bg-cyan-900/30 cursor-pointer text-sm font-bold dark:text-white flex items-center gap-2">📋 Copy</div>
@@ -312,174 +329,52 @@ const menuHTML = `
     <div class="border-b border-slate-100 dark:border-slate-700 my-1"></div>
     <div id="menu-refresh" class="px-4 py-2 hover:bg-cyan-50 dark:hover:bg-cyan-900/30 cursor-pointer text-sm font-bold text-cyan-500 flex items-center gap-2">🔄 Refresh</div>
 </div>`;
-
 document.body.insertAdjacentHTML('beforeend', menuHTML);
 const cMenu = document.getElementById('custom-menu');
 
-// Klik Kanan
+// 3. Mouse Logic (Target & ContextMenu)
+document.addEventListener('mousedown', (e) => {
+    if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) elemenTargetTerakhir = e.target;
+});
+
 document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
+    if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) elemenTargetTerakhir = e.target;
+    
+    const seleksi = window.getSelection().toString();
+    if (seleksi) kantongAjaib = seleksi;
+
     cMenu.style.top = `${e.clientY}px`;
     cMenu.style.left = `${e.clientX}px`;
     cMenu.classList.remove('hidden');
 });
 
-// Variable buat nyimpen teks "cadangan" sebelum seleksinya ilang
-let teksKunci = "";
-
-// 1. Pas lo Klik Kanan, kita kunci teks yang lo seleksi saat itu juga
-document.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    
-    // Ambil teks yang lagi biru-biru SEBELUM menunya muncul
-    const seleksiSekarang = window.getSelection().toString();
-    if (seleksiSekarang) {
-        teksKunci = seleksiSekarang;
-    } else {
-        // Kalo ga ada yang biru, ambil teks dari elemen yang dipencet
-        teksKunci = e.target.innerText || e.target.value || "";
-    }
-
-    // Munculin menu
-    cMenu.style.top = `${e.clientY}px`;
-    cMenu.style.left = `${e.clientX}px`;
-    cMenu.classList.remove('hidden');
-    
-    lastX = e.clientX;
-    lastY = e.clientY;
-});
-
-// 2. Pas tombol Copy ditekan, kita pake teks yang udah kita "Kunci" tadi
-document.getElementById('menu-copy').onclick = async function() {
-    if (teksKunci) {
-        try {
-            // Kita tembak pake API Clipboard
-            await navigator.clipboard.writeText(teksKunci);
-            
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'Tersalin!',
-                showConfirmButton: false,
-                timer: 1000
-            });
-        } catch (err) {
-            // Cara paksa kalo API gagal
+// 4. Button Actions
+document.getElementById('menu-copy').onclick = function() {
+    if (kantongAjaib) {
+        navigator.clipboard.writeText(kantongAjaib).catch(() => {
             const t = document.createElement("textarea");
-            t.value = teksKunci;
-            document.body.appendChild(t);
-            t.select();
-            document.execCommand('copy');
-            document.body.removeChild(t);
-        }
-    } else {
-        Swal.fire('Eits', 'Pilih teks dulu atau klik kanan pas di tulisannya jir!', 'info');
+            t.value = kantongAjaib; document.body.appendChild(t);
+            t.select(); document.execCommand('copy'); document.body.removeChild(t);
+        });
+        showToast('Tersalin!', 'success');
     }
     cMenu.classList.add('hidden');
 };
 
-let kantongAjaib = ""; 
-let elemenTargetTerakhir = null;
-
-// 1. Alert Shortcut (Tetap Aman)
-document.onkeydown = function(e) {
-    if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74)) || (e.ctrlKey && e.keyCode == 85)) {
-        Swal.fire({ icon: 'warning', title: 'AKSES DIBATASI!', timer: 2000, showConfirmButton: false });
-        return false;
-    }
-};
-
-// 2. Pantau Target Input (Klik Kiri)
-document.addEventListener('mousedown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-        elemenTargetTerakhir = e.target;
-    }
-});
-
-// 3. Logic COPY (Hanya isi kantong kalau ada teks yang dipilih)
-document.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    
-    // Simpan target input jika klik kanannya di kotak input
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-        elemenTargetTerakhir = e.target;
-    }
-
-    // Ambil teks yang diseleksi (biru-biru)
-    const teksDipilih = window.getSelection().toString();
-    
-    // UPDATE: Hanya isi kantong kalau user beneran lagi seleksi teks
-    // Biar pas klik kanan di tempat kosong, kantong lama nggak hilang
-    if (teksDipilih) {
-        kantongAjaib = teksDipilih;
-    }
-
-    // Munculkan menu
-    const menu = document.getElementById('custom-menu');
-    menu.style.top = `${e.clientY}px`;
-    menu.style.left = `${e.clientX}px`;
-    menu.classList.remove('hidden');
-});
-
-// Tombol Copy di Menu
-document.getElementById('menu-copy').onclick = function() {
-    if (kantongAjaib) {
-        // Copy ke clipboard sistem buat backup
-        const t = document.createElement("textarea");
-        t.value = kantongAjaib; document.body.appendChild(t);
-        t.select(); document.execCommand('copy'); document.body.removeChild(t);
-        
-        showToast('Tersalin ke Kantong!', 'success');
-    } else {
-        showToast('Pilih teks dulu!', 'error');
-    }
-    document.getElementById('custom-menu').classList.add('hidden');
-};
-
-// 4. Logic PASTE (Ambil dari kantong yang sudah dikunci)
 document.getElementById('menu-paste').onclick = function() {
-    const input = elemenTargetTerakhir;
-
-    if (input) {
-        if (kantongAjaib) {
-            const start = input.selectionStart;
-            const end = input.selectionEnd;
-            
-            // Masukkan teks
-            input.value = input.value.slice(0, start) + kantongAjaib + input.value.slice(end);
-            
-            // Fokus & Simpan ke Firebase
-            input.focus();
-            input.setSelectionRange(start + kantongAjaib.length, start + kantongAjaib.length);
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            
-            showToast('Ditempel!', 'success');
-        } else {
-            showToast('Kantong Kosong!', 'error');
-        }
-    } else {
-        showToast('Klik kotaknya dulu!', 'warning');
+    if (elemenTargetTerakhir && kantongAjaib) {
+        const input = elemenTargetTerakhir;
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        input.value = input.value.slice(0, start) + kantongAjaib + input.value.slice(end);
+        input.focus();
+        input.setSelectionRange(start + kantongAjaib.length, start + kantongAjaib.length);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        showToast('Ditempel!', 'success');
     }
-    document.getElementById('custom-menu').classList.add('hidden');
+    cMenu.classList.add('hidden');
 };
 
-function showToast(m, i) {
-    Swal.fire({ toast: true, position: 'top-end', icon: i, title: m, showConfirmButton: false, timer: 1000 });
-}
-document.addEventListener('click', () => document.getElementById('custom-menu').classList.add('hidden'));
-
-// --- 5. LOGIC REFRESH ---
-document.getElementById('menu-refresh').onclick = function() {
-    // Kasih toast dikit biar keren sebelum reload
-    Swal.fire({
-        title: 'Refreshing...',
-        timer: 800,
-        showConfirmButton: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    }).then(() => {
-        location.reload(); // Ini perintah sakti buat refresh halaman
-    });
-};
+document.getElementById('menu-refresh').onclick = () => location.reload();
+document.addEventListener('click', () => cMenu.classList.add('hidden'));
