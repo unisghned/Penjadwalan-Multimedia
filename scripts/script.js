@@ -14,42 +14,24 @@ const db = firebase.database();
 let currentGuestFilter = 'Biasa';
 
 // --- 5. HYPER SECURITY (TOTAL DEVTOOLS LOCKDOWN) ---
-
 (function() {
-    // 1. Blokir Event Keydown (Level 1)
-    // Kita pakai capture: true supaya dieksekusi sebelum script lain
     window.addEventListener('keydown', function(e) {
-        if (
-            e.keyCode === 123 || // F12
-            (e.ctrlKey && e.shiftKey && [73, 74, 67].includes(e.keyCode)) || // I, J, C
-            (e.ctrlKey && e.keyCode === 85) // Ctrl+U
-        ) {
+        if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && [73, 74, 67].includes(e.keyCode)) || (e.ctrlKey && e.keyCode === 85)) {
             e.preventDefault();
             e.stopPropagation();
             peringatanKeamanan();
         }
     }, true);
 
-    // 2. DEBUGGER TRAP (Level 2 - Hardcore)
-    // Begitu DevTools terbuka (lewat manapun), script ini akan bikin 
-    // tab browser jadi "Freeze" atau sangat lambat bagi si pembobol.
     setInterval(function() {
-        (function() {
-            return false;
-        })
-        ["constructor"]("debugger")
-        ["call"]();
+        (function() { return false; })["constructor"]("debugger")["call"]();
     }, 50);
 
-    // 3. ANTI-ELEMENT PICKER (Khusus Ctrl+Shift+C)
-    // Kita hancurkan fungsi klik kanan dan pemilihan elemen
     document.addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('selectstart', e => e.preventDefault());
 
-    // 4. DETEKSI PERUBAHAN UKURAN (Jika DevTools Docked)
     window.onresize = function() {
-        if ((window.outerHeight - window.innerHeight) > 200 || 
-            (window.outerWidth - window.innerWidth) > 200) {
+        if ((window.outerHeight - window.innerHeight) > 200 || (window.outerWidth - window.innerWidth) > 200) {
             window.location.reload(); 
         }
     };
@@ -67,30 +49,7 @@ let currentGuestFilter = 'Biasa';
     }
 })();
 
-// Custom Menu untuk Refresh saja (Guest dilarang copy berlebihan)
-const menuHTML = `
-<div id="custom-menu" style="display: none;">
-    <div onclick="location.reload()" class="menu-item">🔄 Refresh Halaman</div>
-</div>`;
-document.body.insertAdjacentHTML('beforeend', menuHTML);
-
-document.addEventListener('contextmenu', e => {
-    e.preventDefault();
-    const m = document.getElementById('custom-menu');
-    m.style.top = `${e.clientY}px`;
-    m.style.left = `${e.clientX}px`;
-    m.style.display = 'block'; // Pakai display block biar pasti muncul
-    m.classList.remove('hidden');
-});
-
-document.addEventListener('click', () => {
-    const m = document.getElementById('custom-menu');
-    if(m) m.style.display = 'none'; // Sembunyiin lagi pas klik kiri
-});
-
-document.addEventListener('click', () => document.getElementById('custom-menu').classList.add('hidden'));
-
-// --- 3. DATA RENDERING ---
+// --- 3. DATA RENDERING (LEBIH LEGA) ---
 function setGuestFilter(type) {
     currentGuestFilter = type;
     document.getElementById('f-biasa').classList.toggle('active', type === 'Biasa');
@@ -112,24 +71,25 @@ function renderGuestSchedules() {
             const tglJadwal = new Date(data.tanggal);
             tglJadwal.setHours(0,0,0,0);
 
-            // Filter Kategori & Tanggal (Sudah lewat tidak tampil)
             if(data.kategori === currentGuestFilter && tglJadwal >= hariIni) {
                 let petugasHtml = "";
                 if(data.petugas) {
                     Object.values(data.petugas).forEach(p => {
-                        petugasHtml += `<span class="bg-cyan-900/20 text-cyan-400 border border-cyan-900/50 px-4 py-1.5 rounded-full text-[11px] font-black">${p}</span>`;
+                        // Tag petugas dengan padding lebih besar
+                        petugasHtml += `<span class="bg-cyan-900/40 text-cyan-400 border border-cyan-800/50 px-6 py-2.5 rounded-full text-[11px] font-black tracking-widest">${p}</span>`;
                     });
                 }
 
+                // GANTI STRUKTUR DI SINI: Tambahkan class padding tinggi (py-12 px-10)
                 list.innerHTML += `
-                <div class="glass-card flex flex-col md:flex-row justify-between items-center gap-6 animate__animated animate__fadeInUp">
+                <div class="bg-[#162238]/40 border border-slate-800/50 p-10 md:p-12 rounded-[2.5rem] flex flex-col md:flex-row justify-between items-center gap-8 animate__animated animate__fadeInUp transition-all hover:border-cyan-500/30">
                     <div class="text-center md:text-left">
-                        <span class="text-[8px] font-black px-2 py-0.5 rounded bg-cyan-600 text-white uppercase">${data.kategori}</span>
-                        <h4 class="text-3xl font-black text-white mt-1">${data.jam}</h4>
-                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">${data.namaMisa} • ${data.tanggal}</p>
+                        <span class="text-[9px] font-black px-3 py-1 rounded bg-cyan-600/20 text-cyan-500 uppercase tracking-[0.2em]">${data.kategori}</span>
+                        <h4 class="text-5xl font-black text-white mt-4 tracking-tighter">${data.jam}</h4>
+                        <p class="text-[11px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-2">${data.namaMisa} <span class="mx-2 text-slate-800">•</span> ${data.tanggal}</p>
                     </div>
-                    <div class="flex flex-wrap gap-2 justify-center max-w-md">
-                        ${petugasHtml || '<span class="text-slate-600 text-[10px] font-black uppercase tracking-widest">Belum Ada Petugas</span>'}
+                    <div class="flex flex-wrap gap-4 justify-center md:justify-end max-w-md pt-6 md:pt-0 border-t md:border-t-0 border-slate-800/50 w-full md:w-auto">
+                        ${petugasHtml || '<span class="text-slate-600 text-[10px] font-black uppercase tracking-[0.5em] italic">Belum Ada Petugas</span>'}
                     </div>
                 </div>`;
             }
@@ -137,7 +97,6 @@ function renderGuestSchedules() {
     });
 }
 
-// Initial Run
 setInterval(() => {
     const el = document.getElementById('realtime-clock');
     if(el) el.innerText = new Date().toLocaleTimeString('id-ID');
