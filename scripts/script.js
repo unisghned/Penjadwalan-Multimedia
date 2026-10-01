@@ -138,7 +138,29 @@ function openDaftarMandiri(sKey) {
         }
     }).then((res) => {
         if(res.isConfirmed && res.value) {
-            db.ref(`schedules/${sKey}/petugas`).push(res.value);
+            const name = res.value.trim();
+            const assignmentsRef = db.ref(`schedules/${sKey}/petugas`);
+            const assignmentKey = assignmentsRef.push().key;
+            assignmentsRef.transaction(assignments => {
+                const currentAssignments = assignments || {};
+                const normalizedName = name.toLowerCase();
+                const alreadyAssigned = Object.values(currentAssignments).some(assignedName =>
+                    String(assignedName).trim().toLowerCase() === normalizedName
+                );
+
+                if(alreadyAssigned) return;
+                return { ...currentAssignments, [assignmentKey]: name };
+            }).then(result => {
+                if(!result.committed) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Nama Sudah Terdaftar',
+                        text: 'Nama ini sudah ada di jadwal tersebut.',
+                        background: '#162238',
+                        color: '#fff'
+                    });
+                }
+            }).catch(error => Swal.fire('Gagal', error.message, 'error'));
         }
     });
 }
