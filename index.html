@@ -4,34 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jadwal Multimedia</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="styles/style.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body class="bg-[#0b1426] text-slate-300 antialiased selection:bg-cyan-500/30 min-h-screen flex flex-col">
-
-    <a href="admin.html" class="fixed top-6 left-6 z-50 opacity-30 hover:opacity-100 transition-all text-[10px] font-black tracking-[0.2em] uppercase vertical-text text-white">
-        Administrator
-    </a>
-
-    <main class="container mx-auto px-6 py-12 max-w-4xl flex-1 flex flex-col">
-        <header class="text-center mb-12 animate__animated animate__fadeIn">
-            <h1 class="text-5xl font-black text-white tracking-tighter mb-4">MISA <span class="text-cyan-500">SCHEDULE</span></h1>
-            <div id="realtime-clock" class="text-xs font-mono tracking-[0.3em] text-cyan-500 uppercase font-bold"></div>
-        </header>
-
-        <nav class="flex justify-center gap-8 mb-12 border-b border-slate-800 pb-4">
-            <button onclick="setGuestFilter('Biasa')" id="f-biasa" class="nav-link active">BIASA</button>
-            <button onclick="setGuestFilter('Besar')" id="f-besar" class="nav-link">BESAR</button>
+<body>
+    <main class="page-shell">
+        <nav class="topbar" aria-label="Navigasi utama">
+            <a class="wordmark" href="index.html"><img class="brand-logo" src="assets/logo.png" alt=""> Multimedia Team</a>
+            <div class="topbar-right">
+                <a class="admin-link" href="admin.html">Administrator</a>
+            </div>
         </nav>
 
-        <div id="guest-schedule-list" class="space-y-8 flex-1"></div>
-        
-        <footer class="mt-16 pt-8 border-t border-slate-800/60 text-center">
-            <p class="text-[9px] font-bold tracking-[0.5em] text-slate-600 uppercase">Multimedia Team • Saint Martinus</p>
+        <header class="hero">
+            <p class="eyebrow">Saint Martinus · Pelayanan Liturgi</p>
+            <h1>MISA <span>SCHEDULE</span></h1>
+            <div class="hero-meta"><span class="live-dot" aria-hidden="true"></span><span>Waktu sekarang</span><time id="realtime-clock">--:--:--</time></div>
+        </header>
+
+        <section class="schedule-section" aria-labelledby="schedule-title">
+            <div class="section-heading">
+                <h2 id="schedule-title">Jadwal Pelayanan</h2>
+                <p id="schedule-count">Memuat jadwal</p>
+            </div>
+            <div id="guest-schedule-list" class="schedule-list" aria-live="polite"></div>
+        </section>
+
+        <footer class="footer">
+            <span>Multimedia Team · Saint Martinus</span>
+            <a href="admin.html">Area Administrator</a>
         </footer>
     </main>
 
