@@ -155,6 +155,7 @@ function setFilter(type) {
     container.innerHTML = type === 'Besar' ? 
         `<input type="text" id="input-jam" placeholder="Contoh: 17.00" class="w-full bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl text-sm dark:text-white outline-none">` :
         `<select id="input-jam" class="w-full bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl text-sm dark:text-white outline-none">
+            <option value="Jumat 18.00">Jumat 18.00</option>
             <option value="Sabtu 18.00">Sabtu 18.00</option>
             <option value="Minggu 06.00">Minggu 06.00</option>
             <option value="Minggu 08.00">Minggu 08.00</option>
