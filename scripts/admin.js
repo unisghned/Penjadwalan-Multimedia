@@ -246,8 +246,27 @@ function openDaftar(id, jam) { selectedScheduleId = id; document.getElementById(
 function closeModal() { document.getElementById('modal-daftar').classList.add('hidden'); }
 document.addEventListener('click', e => {
     if(e.target.id === 'confirm-daftar') {
-        const name = document.getElementById('select-member').value;
-        if(name) db.ref(`schedules/${selectedScheduleId}/petugas`).push(name).then(closeModal);
+        const name = document.getElementById('select-member').value.trim();
+        if(!name) return;
+
+        const assignmentsRef = db.ref(`schedules/${selectedScheduleId}/petugas`);
+        const assignmentKey = assignmentsRef.push().key;
+        assignmentsRef.transaction(assignments => {
+            const currentAssignments = assignments || {};
+            const normalizedName = name.toLowerCase();
+            const alreadyAssigned = Object.values(currentAssignments).some(assignedName =>
+                String(assignedName).trim().toLowerCase() === normalizedName
+            );
+
+            if(alreadyAssigned) return;
+            return { ...currentAssignments, [assignmentKey]: name };
+        }).then(result => {
+            if(result.committed) {
+                closeModal();
+            } else {
+                Swal.fire('Nama Sudah Terdaftar', 'Nama ini sudah ada di jadwal tersebut.', 'info');
+            }
+        }).catch(error => Swal.fire('Gagal', error.message, 'error'));
     }
 });
 
