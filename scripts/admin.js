@@ -15,79 +15,95 @@ const auth = firebase.auth();
 
 let currentFilter = 'Biasa';
 let selectedScheduleId = null;
+let membersCache = {};
 
 // --- 2. TEMPLATES (The "Ghost" UI) ---
 const UI_LOGIN = `
-<div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#162238] p-8 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-700 max-w-sm w-full animate__animated animate__zoomIn">
-        <div class="text-center mb-8">
-            <div class="text-4xl mb-2">🎥</div>
-            <h2 class="text-2xl font-black dark:text-white uppercase tracking-tighter">Login Tim</h2>
-        </div>
-        <form onsubmit="event.preventDefault(); handleLogin();" class="space-y-4">
-            <input type="email" id="auth-email" placeholder="Email" class="w-full bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-4 rounded-2xl outline-none focus:ring-2 ring-cyan-500 dark:text-white text-sm" required>
-            <input type="password" id="auth-password" placeholder="Password" class="w-full bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-4 rounded-2xl outline-none focus:ring-2 ring-cyan-500 dark:text-white text-sm" required>
-            <button type="submit" class="w-full bg-cyan-600 text-white py-4 rounded-2xl font-black text-sm hover:bg-cyan-500 shadow-lg">MASUK</button>
-            <button type="button" onclick="handleRegister()" class="w-full text-slate-400 font-bold text-[10px] uppercase mt-2 tracking-widest">Daftar Akun Baru</button>
+<main class="admin-shell login-shell">
+    <nav class="admin-topbar">
+        <a class="wordmark" href="index.html"><img class="brand-logo" src="assets/logo.png" alt=""> Multimedia Team</a>
+    </nav>
+    <header class="admin-hero">
+        <p class="eyebrow">Saint Martinus · Ruang Tim</p>
+        <h1>AREA <span>ADMIN</span></h1>
+        <p>Masuk untuk mengelola jadwal dan anggota.</p>
+    </header>
+    <section class="login-card">
+        <h2>Login Tim</h2>
+        <p>Akses khusus untuk administrator multimedia.</p>
+        <form onsubmit="event.preventDefault(); handleLogin();" class="login-form">
+            <input type="email" id="auth-email" placeholder="Email" class="admin-input" required>
+            <input type="password" id="auth-password" placeholder="Password" class="admin-input" required>
+            <button type="submit" class="primary-button">MASUK</button>
+            <button type="button" onclick="handleRegister()" class="login-register">Daftar Akun Baru</button>
         </form>
-    </div>
-</div>`;
+    </section>
+</main>`;
 
 const UI_APP = `
-    <nav class="bg-white dark:bg-[#162238] border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-50 shadow-md">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">🎥 <span class="text-cyan-500">Multimedia</span></h1>
-            <div class="flex items-center gap-4">
-                <button onclick="logout()" class="text-[10px] font-black text-red-500 uppercase">Keluar</button>
-                <button onclick="toggleTheme()" class="p-2.5 rounded-2xl bg-slate-100 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-700"><span id="theme-icon">☀️</span></button>
-                <div id="realtime-clock" class="text-xs font-mono font-bold text-cyan-600"></div>
-            </div>
+<main class="admin-shell">
+    <nav class="admin-topbar">
+        <a class="wordmark" href="index.html"><img class="brand-logo" src="assets/logo.png" alt=""> Multimedia Team</a>
+        <div class="admin-topbar-actions">
+            <div id="realtime-clock" class="admin-clock"></div>
+            <button onclick="toggleTheme()" class="icon-button" aria-label="Ganti tema"><span id="theme-icon">☀</span></button>
+            <button onclick="logout()" class="danger-button">KELUAR</button>
         </div>
     </nav>
-    <div class="container mx-auto p-4 max-w-5xl animate__animated animate__fadeIn">
-        <div class="flex justify-center gap-4 mb-8 border-b border-slate-200 dark:border-slate-800">
-            <button onclick="switchTab('jadwal')" id="btn-tab-jadwal" class="tab-btn active-tab">📅 JADWAL</button>
-            <button onclick="switchTab('anggota')" id="btn-tab-anggota" class="tab-btn">👥 ANGGOTA</button>
-        </div>
-        <section id="tab-jadwal" class="tab-content space-y-6">
-            <div class="bg-white dark:bg-[#162238] p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl">
-                <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                    <h3 class="font-black text-cyan-400 text-sm uppercase">Input Jadwal</h3>
-                    <div class="flex bg-slate-100 dark:bg-[#0b1426] p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 w-full md:w-auto">
-                        <button onclick="setFilter('Biasa')" id="filter-biasa" class="flex-1 px-6 py-2 rounded-xl text-xs font-black transition-all filter-active">BIASA</button>
-                        <button onclick="setFilter('Besar')" id="filter-besar" class="flex-1 px-6 py-2 rounded-xl text-xs font-black transition-all text-slate-500">BESAR</button>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <input type="date" id="input-tgl" class="bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl text-sm dark:text-white outline-none">
-                    <div id="container-jam"></div>
-                    <input type="text" id="input-nama-misa" placeholder="Nama Misa" class="bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl text-sm dark:text-white outline-none">
-                    <button onclick="buatJadwal()" class="bg-cyan-600 text-white font-black rounded-2xl shadow-lg py-3">PUBLISH</button>
-                </div>
-            </div>
-            <div id="schedule-list" class="space-y-4"></div>
-        </section>
-        <section id="tab-anggota" class="tab-content hidden animate__animated animate__fadeIn">
-            <div class="bg-white dark:bg-[#162238] p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl mb-6">
-                <div class="flex flex-col md:flex-row gap-4">
-                    <input type="text" id="member-name" placeholder="Nama Lengkap" class="flex-1 bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl outline-none dark:text-white text-sm">
-                    <button onclick="addMember()" class="bg-cyan-600 text-white px-10 py-3 font-black rounded-2xl shadow-lg">SIMPAN</button>
+
+    <header class="admin-hero">
+        <p class="eyebrow">Saint Martinus · Ruang Tim</p>
+        <h1>Jadwal <span>Multimedia</span></h1>
+        <p>Atur pelayanan misa dan daftar anggota tim.</p>
+    </header>
+
+    <nav class="admin-tabs" aria-label="Bagian administrasi">
+        <button onclick="switchTab('jadwal')" id="btn-tab-jadwal" class="tab-btn active-tab">JADWAL</button>
+        <button onclick="switchTab('anggota')" id="btn-tab-anggota" class="tab-btn">ANGGOTA</button>
+    </nav>
+
+    <section id="tab-jadwal" class="tab-content">
+        <div class="admin-panel">
+            <div class="panel-heading">
+                <div><h2>Tambah jadwal misa</h2><p>Lengkapi detail misa untuk menerbitkan jadwal.</p></div>
+                <div class="filter-control" aria-label="Jenis misa">
+                    <button onclick="setFilter('Biasa')" id="filter-biasa" class="filter-button is-active">BIASA</button>
+                    <button onclick="setFilter('Besar')" id="filter-besar" class="filter-button">BESAR</button>
                 </div>
             </div>
-            <div id="members-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
-        </section>
-    </div>
-    <div id="modal-daftar" class="fixed inset-0 bg-slate-900/60 dark:bg-black/80 hidden flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
-        <div class="bg-white dark:bg-[#162238] p-8 rounded-[2.5rem] max-w-sm w-full animate__animated animate__bounceIn">
-            <h3 class="text-2xl font-black mb-1 dark:text-white text-center">PILIH PETUGAS</h3>
-            <p id="modal-info" class="text-[10px] text-cyan-600 font-bold mb-6 text-center uppercase"></p>
-            <select id="select-member" class="w-full bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-4 rounded-2xl mb-8 dark:text-white outline-none"></select>
-            <div class="flex gap-4">
-                <button onclick="closeModal()" class="flex-1 text-slate-400 font-black text-xs uppercase">Batal</button>
-                <button id="confirm-daftar" class="flex-[2] bg-cyan-600 text-white py-4 rounded-2xl font-black shadow-lg text-xs uppercase">Daftar</button>
+            <div class="schedule-form">
+                <input type="date" id="input-tgl" class="admin-input" aria-label="Tanggal misa">
+                <div id="container-jam"></div>
+                <input type="text" id="input-nama-misa" placeholder="Nama misa" class="admin-input">
+                <button onclick="buatJadwal()" class="primary-button">PUBLISH</button>
             </div>
         </div>
-    </div>`;
+        <div id="schedule-list" class="schedule-list admin-schedule-list"></div>
+    </section>
+
+    <section id="tab-anggota" class="tab-content hidden">
+        <div class="admin-panel member-panel">
+            <div class="panel-heading"><div><h2>Daftar anggota</h2><p>Tambahkan nama yang bisa dipilih pada pendaftaran jadwal.</p></div></div>
+            <div class="member-form">
+                <input type="text" id="member-name" placeholder="Nama lengkap" class="admin-input">
+                <button onclick="addMember()" class="primary-button">TAMBAH ANGGOTA</button>
+            </div>
+        </div>
+        <div id="members-grid" class="members-grid"></div>
+    </section>
+</main>
+
+<div id="modal-daftar" class="modal-backdrop hidden">
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <h2 id="modal-title">Pilih petugas</h2>
+        <p id="modal-info"></p>
+        <select id="select-member" class="admin-select"></select>
+        <div class="modal-actions">
+            <button onclick="closeModal()" class="secondary-button">BATAL</button>
+            <button id="confirm-daftar" class="primary-button">DAFTAR</button>
+        </div>
+    </section>
+</div>`;
 
 // --- 3. CORE AUTH LOGIC ---
 auth.onAuthStateChanged(user => {
@@ -148,13 +164,13 @@ function setFilter(type) {
     const besarBtn = document.getElementById('filter-besar');
     if(!biasaBtn) return;
 
-    biasaBtn.className = type === 'Biasa' ? 'flex-1 px-6 py-2 rounded-xl text-xs font-black filter-active transition-all' : 'flex-1 px-6 py-2 rounded-xl text-xs font-black text-slate-500 transition-all';
-    besarBtn.className = type === 'Besar' ? 'flex-1 px-6 py-2 rounded-xl text-xs font-black filter-active transition-all' : 'flex-1 px-6 py-2 rounded-xl text-xs font-black text-slate-500 transition-all';
+    biasaBtn.classList.toggle('is-active', type === 'Biasa');
+    besarBtn.classList.toggle('is-active', type === 'Besar');
     
     const container = document.getElementById('container-jam');
     container.innerHTML = type === 'Besar' ? 
-        `<input type="text" id="input-jam" placeholder="Contoh: 17.00" class="w-full bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl text-sm dark:text-white outline-none">` :
-        `<select id="input-jam" class="w-full bg-slate-50 dark:bg-[#0b1426] border border-slate-200 dark:border-slate-600 p-3 rounded-2xl text-sm dark:text-white outline-none">
+        `<input type="text" id="input-jam" placeholder="Contoh: 17.00" class="admin-input">` :
+        `<select id="input-jam" class="admin-select">
             <option value="Jumat 18.00">Jumat 18.00</option>
             <option value="Sabtu 18.00">Sabtu 18.00</option>
             <option value="Minggu 06.00">Minggu 06.00</option>
@@ -193,26 +209,34 @@ function renderSchedules() {
             
             if(data.petugas) {
                 Object.keys(data.petugas).forEach(k => {
-                    petugasHtml += `<span class="bg-slate-100 dark:bg-[#0b1426] border dark:border-slate-700 px-3 py-1.5 rounded-full text-[10px] text-cyan-600 font-black">
-                        ${data.petugas[k]} <button onclick="removePetugas('${child.key}','${k}')" class="text-red-500 ml-1">×</button>
+                    petugasHtml += `<span class="roster-name">
+                        ${escapeHtml(data.petugas[k])}
+                        <button onclick="editPetugas('${child.key}','${k}')" class="btn-edit-petugas" aria-label="Edit ${escapeHtml(data.petugas[k])}" title="Edit nama">EDIT</button>
+                        <button onclick="removePetugas('${child.key}','${k}')" class="btn-remove-petugas" aria-label="Hapus ${escapeHtml(data.petugas[k])}" title="Hapus nama">×</button>
                     </span>`;
                 });
             }
 
             list.innerHTML += `
-            <div class="bg-white dark:bg-[#162238] p-6 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl border border-slate-200 dark:border-slate-700 animate__animated animate__fadeInUp">
-                <div class="flex-1">
-                    <span class="text-[8px] font-black px-2 py-0.5 rounded bg-cyan-600 text-white uppercase">${data.kategori}</span>
-                    <h4 class="text-2xl font-black dark:text-white mt-1">${data.jam}</h4>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase">${data.namaMisa} • ${data.tanggal}</p>
+            <article class="schedule-card">
+                <div class="card-main">
+                    <span class="service-type ${data.kategori === 'Besar' ? 'large' : ''}">${escapeHtml(data.kategori)}</span>
+                    <h3 class="service-name">${escapeHtml(data.namaMisa)}</h3>
+                    <p class="service-date">${escapeHtml(data.tanggal)}</p>
                 </div>
-                <div class="flex flex-wrap gap-2 flex-1 justify-center">${petugasHtml || '<span class="text-slate-300 dark:text-slate-600 text-[10px] font-black uppercase tracking-widest text-center">Empty</span>'}</div>
-                <div class="flex items-center gap-4 justify-end min-w-[160px]">
-                    <span class="text-xs font-black ${count>=lim?'text-red-500':'text-slate-300'} font-mono">${count}/${lim}</span>
-                    <button onclick="openDaftar('${child.key}','${data.jam}')" class="bg-cyan-600 text-white px-8 py-3 rounded-2xl text-xs font-black ${count>=lim?'opacity-30 cursor-not-allowed':''}" ${count>=lim?'disabled':''}>${count>=lim?'FULL':'DAFTAR'}</button>
-                    <button onclick="hapusSatuJadwal('${child.key}')" class="text-red-400">🗑️</button>
+                <div class="time-block">${escapeHtml(data.jam)}</div>
+                <div class="card-bottom">
+                    <div class="roster">
+                        <p class="roster-label">Petugas Terdaftar</p>
+                        <div class="roster-names">${petugasHtml || '<span class="roster-empty">Belum ada petugas</span>'}</div>
+                    </div>
+                    <div class="card-actions schedule-admin-actions">
+                        <span class="capacity ${count >= lim ? 'capacity-full' : ''}">${count}/${lim}</span>
+                        <button onclick="openDaftar('${child.key}','${escapeHtml(data.jam)}')" class="register-button" ${count>=lim?'disabled':''}>${count>=lim?'PENUH':'DAFTAR'}</button>
+                        <button onclick="hapusSatuJadwal('${child.key}')" class="danger-button delete-schedule" aria-label="Hapus jadwal" title="Hapus jadwal">HAPUS</button>
+                    </div>
                 </div>
-            </div>`;
+            </article>`;
         });
     });
 }
@@ -228,22 +252,124 @@ function initMembersListener() {
     db.ref('members').on('value', snap => {
         const grid = document.getElementById('members-grid'), select = document.getElementById('select-member');
         if(!grid) return;
-        grid.innerHTML = ""; select.innerHTML = '<option value="">-- Pilih Nama --</option>';
+        membersCache = {};
+        grid.innerHTML = "";
+        select.innerHTML = '<option value="">-- Pilih Nama --</option>';
         snap.forEach(child => {
             const id = child.key, name = child.val().name;
-            grid.innerHTML += `<div class="bg-white dark:bg-[#162238] p-5 rounded-3xl border border-slate-200 dark:border-slate-700 text-center relative group"><p class="font-bold dark:text-white text-sm">${name}</p><button onclick="db.ref('members/${id}').remove()" class="absolute top-2 right-2 text-red-500 opacity-0 group-hover:opacity-100">🗑️</button></div>`;
-            select.innerHTML += `<option value="${name}">${name}</option>`;
+            membersCache[id] = name;
+            const safeName = escapeHtml(name);
+            grid.innerHTML += `<article class="member-card"><p class="member-name">${safeName}</p><div class="member-actions"><button onclick="editMember('${id}')" class="icon-button" aria-label="Edit nama ${safeName}" title="Edit nama">EDIT</button><button onclick="db.ref('members/${id}').remove()" class="icon-button" aria-label="Hapus ${safeName}" title="Hapus anggota">HAPUS</button></div></article>`;
+            select.innerHTML += `<option value="${safeName}">${safeName}</option>`;
         });
+        if(snap.numChildren() === 0) grid.innerHTML = '<p class="member-empty">Belum ada anggota. Tambahkan nama untuk mulai.</p>';
     });
 }
 
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, character => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[character]);
+}
+
 function addMember() {
-    const n = document.getElementById('member-name').value;
-    if(n) db.ref('members').push({ name: n }).then(() => { document.getElementById('member-name').value = ""; });
+    const input = document.getElementById('member-name');
+    const name = input.value.trim();
+    if(!name) return;
+    const duplicate = Object.values(membersCache).some(existingName => existingName.trim().toLowerCase() === name.toLowerCase());
+    if(duplicate) return Swal.fire('Nama Sudah Ada', 'Gunakan nama yang berbeda untuk setiap anggota.', 'info');
+    db.ref('members').push({ name }).then(() => { input.value = ""; });
+}
+
+function editMember(id) {
+    const currentName = membersCache[id];
+    if(!currentName) return;
+
+    Swal.fire({
+        title: 'Edit Nama Anggota',
+        input: 'text',
+        inputValue: currentName,
+        showCancelButton: true,
+        confirmButtonText: 'SIMPAN',
+        cancelButtonText: 'BATAL',
+        confirmButtonColor: '#29c7d9',
+        background: '#172740',
+        color: '#eef4fa',
+        inputValidator: value => {
+            const name = value.trim();
+            if(!name) return 'Nama tidak boleh kosong.';
+            const duplicate = Object.entries(membersCache).some(([memberId, existingName]) =>
+                memberId !== id && existingName.trim().toLowerCase() === name.toLowerCase()
+            );
+            if(duplicate) return 'Nama tersebut sudah digunakan.';
+        }
+    }).then(result => {
+        if(!result.isConfirmed) return;
+        const newName = result.value.trim();
+        if(newName === currentName) return;
+
+        db.ref('schedules').once('value').then(snap => {
+            const updates = { [`members/${id}/name`]: newName };
+            snap.forEach(schedule => {
+                schedule.child('petugas').forEach(assignment => {
+                    const assignedName = assignment.val();
+                    if(typeof assignedName === 'string' && assignedName.trim().toLowerCase() === currentName.trim().toLowerCase()) {
+                        updates[`schedules/${schedule.key}/petugas/${assignment.key}`] = newName;
+                    }
+                });
+            });
+            return db.ref().update(updates);
+        }).then(() => Swal.fire('Nama Diperbarui', 'Nama anggota dan daftar petugas terkait sudah diperbarui.', 'success'))
+          .catch(error => Swal.fire('Gagal', error.message, 'error'));
+    });
 }
 
 function openDaftar(id, jam) { selectedScheduleId = id; document.getElementById('modal-info').innerText = jam; document.getElementById('modal-daftar').classList.remove('hidden'); }
 function closeModal() { document.getElementById('modal-daftar').classList.add('hidden'); }
+
+function editPetugas(scheduleId, assignmentId) {
+    const assignmentRef = db.ref(`schedules/${scheduleId}/petugas/${assignmentId}`);
+    assignmentRef.once('value').then(snapshot => {
+        const currentName = snapshot.val();
+        if(typeof currentName !== 'string') return;
+
+        return Swal.fire({
+            title: 'Edit Nama Petugas',
+            input: 'text',
+            inputValue: currentName,
+            showCancelButton: true,
+            confirmButtonText: 'SIMPAN',
+            cancelButtonText: 'BATAL',
+            confirmButtonColor: '#29c7d9',
+            background: '#172740',
+            color: '#eef4fa',
+            inputValidator: value => {
+                if(!value.trim()) return 'Nama tidak boleh kosong.';
+            }
+        }).then(result => {
+            if(!result.isConfirmed) return;
+            const newName = result.value.trim();
+            return db.ref(`schedules/${scheduleId}/petugas`).transaction(assignments => {
+                const currentAssignments = assignments || {};
+                const duplicate = Object.entries(currentAssignments).some(([key, assignedName]) =>
+                    key !== assignmentId && String(assignedName).trim().toLowerCase() === newName.toLowerCase()
+                );
+                if(duplicate) return;
+                currentAssignments[assignmentId] = newName;
+                return currentAssignments;
+            }).then(transaction => {
+                if(!transaction.committed) {
+                    return Swal.fire('Nama Sudah Terdaftar', 'Nama ini sudah ada di jadwal tersebut.', 'info');
+                }
+            });
+        });
+    }).catch(error => Swal.fire('Gagal', error.message, 'error'));
+}
+
 document.addEventListener('click', e => {
     if(e.target.id === 'confirm-daftar') {
         const name = document.getElementById('select-member').value.trim();
