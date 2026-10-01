@@ -72,7 +72,7 @@ function renderGuestSchedules() {
             tglJadwal.setHours(0,0,0,0);
 
             if(data.kategori === currentGuestFilter && tglJadwal >= hariIni) {
-                const lim = data.kategori === 'Besar' ? 5 : 3;
+                const lim = data.kategori === 'Besar' ? 6 : 4;
                 const count = data.petugas ? Object.keys(data.petugas).length : 0;
                 
                 let petugasHtml = "";
