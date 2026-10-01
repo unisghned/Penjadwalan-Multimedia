@@ -11,32 +11,30 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body class="bg-[#0b1426] text-slate-300 antialiased selection:bg-cyan-500/30">
+<body class="bg-[#0b1426] text-slate-300 antialiased selection:bg-cyan-500/30 min-h-screen flex flex-col">
 
-    <a href="admin.html" class="fixed top-6 left-6 z-50 opacity-20 hover:opacity-100 transition-all text-[10px] font-black tracking-[0.2em] uppercase vertical-text">
+    <a href="admin.html" class="fixed top-6 left-6 z-50 opacity-30 hover:opacity-100 transition-all text-[10px] font-black tracking-[0.2em] uppercase vertical-text text-white">
         Administrator
     </a>
 
-    <main class="container mx-auto px-6 py-12 max-w-3xl min-h-screen flex flex-col">
-        <header class="text-center mb-16 animate__animated animate__fadeIn">
+    <main class="container mx-auto px-6 py-12 max-w-4xl flex-1 flex flex-col">
+        <header class="text-center mb-12 animate__animated animate__fadeIn">
             <h1 class="text-5xl font-black text-white tracking-tighter mb-4">MISA <span class="text-cyan-500">SCHEDULE</span></h1>
-            <div id="realtime-clock" class="text-xs font-mono tracking-[0.3em] text-slate-500 uppercase"></div>
+            <div id="realtime-clock" class="text-xs font-mono tracking-[0.3em] text-cyan-500 uppercase font-bold"></div>
         </header>
 
-        <nav class="flex justify-center gap-8 mb-16 border-b border-slate-800 pb-4">
+        <nav class="flex justify-center gap-8 mb-12 border-b border-slate-800 pb-4">
             <button onclick="setGuestFilter('Biasa')" id="f-biasa" class="nav-link active">BIASA</button>
             <button onclick="setGuestFilter('Besar')" id="f-besar" class="nav-link">BESAR</button>
         </nav>
 
-        <div id="guest-schedule-list" class="space-y-12">
-            </div>
+        <div id="guest-schedule-list" class="space-y-8 flex-1"></div>
         
-        <footer class="mt-auto pt-20 text-center">
-            <p class="text-[9px] font-bold tracking-[0.5em] text-slate-700 uppercase">Multimedia Team • Saint Martinus</p>
+        <footer class="mt-16 pt-8 border-t border-slate-800/60 text-center">
+            <p class="text-[9px] font-bold tracking-[0.5em] text-slate-600 uppercase">Multimedia Team • Saint Martinus</p>
         </footer>
     </main>
 
     <script src="scripts/script.js"></script>
 </body>
 </html>
-
