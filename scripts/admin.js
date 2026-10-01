@@ -187,7 +187,7 @@ function renderSchedules() {
             // Jika tanggal jadwal lebih kecil (lama) dari hari ini, jangan di-render
             if (tglJadwal < hariIni) return;
 
-            const lim = data.kategori === 'Besar' ? 5 : 3;
+            const lim = data.kategori === 'Besar' ? 6 : 4;
             const count = data.petugas ? Object.keys(data.petugas).length : 0;
             let petugasHtml = "";
             
