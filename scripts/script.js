@@ -14,6 +14,36 @@ const db = firebase.database();
 
 let availableMembers = [];
 
+function getGuestThemeOptions() {
+    const styles = getComputedStyle(document.documentElement);
+    return {
+        background: styles.getPropertyValue('--surface-raised').trim(),
+        color: styles.getPropertyValue('--text').trim()
+    };
+}
+
+function updateThemeButton() {
+    const button = document.getElementById('theme-toggle');
+    if(!button) return;
+
+    const isDark = document.documentElement.classList.contains('dark');
+    button.textContent = isDark ? '☀' : '☾';
+    button.setAttribute('aria-label', isDark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap');
+    button.title = isDark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap';
+}
+
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    updateThemeButton();
+}
+
+function toggleTheme() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    updateThemeButton();
+}
+
 // Synchronization Anggota dari database
 db.ref('members').on('value', snap => {
     availableMembers = [];
@@ -40,8 +70,7 @@ db.ref('members').on('value', snap => {
             icon: 'error',
             title: 'SISTEM TERKUNCI!',
             text: 'Dilarang keras mengakses fitur pengembang.',
-            background: '#162238',
-            color: '#fff',
+            ...getGuestThemeOptions(),
             showConfirmButton: false,
             timer: 1500
         });
@@ -127,8 +156,7 @@ function openDaftarMandiri(sKey) {
             icon: 'info',
             title: 'Belum Ada Anggota',
             text: 'Minta admin menambahkan daftar nama anggota terlebih dahulu.',
-            background: '#162238',
-            color: '#fff'
+            ...getGuestThemeOptions()
         });
         return;
     }
@@ -147,8 +175,7 @@ function openDaftarMandiri(sKey) {
         showCancelButton: true,
         confirmButtonText: 'DAFTAR',
         confirmButtonColor: '#0891b2',
-        background: '#162238',
-        color: '#fff',
+        ...getGuestThemeOptions(),
         customClass: {
             popup: 'member-picker-popup',
             htmlContainer: 'member-picker-content',
@@ -216,8 +243,7 @@ function openDaftarMandiri(sKey) {
                         icon: 'info',
                         title: 'Nama Sudah Terdaftar',
                         text: 'Nama ini sudah ada di jadwal tersebut.',
-                        background: '#162238',
-                        color: '#fff'
+                        ...getGuestThemeOptions()
                     });
                 }
             }).catch(error => Swal.fire('Gagal', error.message, 'error'));
@@ -244,8 +270,7 @@ function removePetugas(sKey, pKey) {
         confirmButtonColor: '#ef4444',
         cancelButtonText: 'Batal',
         confirmButtonText: 'Ya, Hapus',
-        background: '#162238',
-        color: '#fff'
+        ...getGuestThemeOptions()
     }).then(res => {
         if(res.isConfirmed) {
             db.ref(`schedules/${sKey}/petugas/${pKey}`).remove();
@@ -258,4 +283,5 @@ setInterval(() => {
     if(el) el.innerText = new Date().toLocaleTimeString('id-ID');
 }, 1000);
 
+initTheme();
 renderGuestSchedules();

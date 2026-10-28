@@ -13,6 +13,17 @@
     --green: #83d6b0;
 }
 
+html { color-scheme: dark; }
+html:not(.dark) {
+    color-scheme: light;
+    --page: #e8eef2;
+    --surface: #f8fbfc;
+    --surface-raised: #ffffff;
+    --line: rgba(28, 57, 78, 0.14);
+    --muted: #5d7185;
+    --text: #17283b;
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -66,6 +77,20 @@ button { cursor: pointer; }
 }
 
 .topbar-right { display: flex; align-items: center; gap: 16px; }
+
+.theme-toggle {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--text);
+    background: var(--surface);
+    font-size: 18px;
+    transition: border-color 160ms ease, background 160ms ease;
+}
+.theme-toggle:hover { border-color: var(--cyan); }
 
 .admin-link, .footer a {
     color: var(--muted);
@@ -142,6 +167,11 @@ button { cursor: pointer; }
     animation: reveal 450ms ease-out both;
 }
 
+html:not(.dark) .schedule-card {
+    background: linear-gradient(125deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 252, 0.98));
+    box-shadow: 0 18px 45px rgba(28, 57, 78, 0.08);
+}
+
 .card-main { min-width: 0; }
 .service-type {
     display: inline-flex;
@@ -199,11 +229,15 @@ button { cursor: pointer; }
 }
 
 .roster-empty { color: #71849a; font-size: 11px; font-style: italic; }
+html:not(.dark) .roster-label, html:not(.dark) .roster-empty { color: var(--muted); }
+html:not(.dark) .roster-name { color: #176875; }
 .roster-remove { padding: 0 2px; border: 0; color: var(--coral); background: transparent; font-size: 13px; font-weight: 800; }
 .roster-remove:hover { color: #ffd0c2; }
 .card-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
 .capacity { color: #aab9ca; font-family: 'Space Mono', monospace; font-size: 10px; }
+html:not(.dark) .capacity { color: var(--muted); }
 .capacity-full { color: var(--coral); }
+html:not(.dark) .capacity-full { color: #bb4c30; }
 
 .swal2-popup.member-picker-popup {
     width: min(92vw, 430px) !important;
@@ -255,6 +289,7 @@ button { cursor: pointer; }
     scrollbar-color: #425b73 transparent;
     scrollbar-width: thin;
 }
+html:not(.dark) .member-picker-list { background: #f2f6f8; }
 .member-picker-option {
     display: grid;
     grid-template-columns: 30px minmax(0, 1fr) 18px;
@@ -280,6 +315,7 @@ button { cursor: pointer; }
 .swal2-popup.member-picker-popup .swal2-actions { gap: 8px; margin-top: 18px; }
 .swal2-popup.member-picker-popup .swal2-styled { min-height: 40px; margin: 0; padding: 0 17px; border-radius: 9px; font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 800; }
 .swal2-popup.member-picker-popup .swal2-cancel.member-picker-cancel { color: var(--text); background: #34465b !important; }
+html:not(.dark) .swal2-popup.member-picker-popup .swal2-cancel.member-picker-cancel { background: #e2eaf0 !important; }
 .swal2-popup.member-picker-popup .swal2-confirm.member-picker-confirm { color: #06212d; background: var(--cyan) !important; }
 
 .register-button {
@@ -317,6 +353,7 @@ button { cursor: pointer; }
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
+html:not(.dark) .footer { color: var(--muted); }
 
 @keyframes reveal {
     from { opacity: 0; transform: translateY(10px); }
