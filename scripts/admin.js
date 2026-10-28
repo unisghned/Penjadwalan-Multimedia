@@ -75,6 +75,7 @@ const UI_APP = `
                 <input type="date" id="input-tgl" class="admin-input" aria-label="Tanggal misa">
                 <div id="container-jam"></div>
                 <input type="text" id="input-nama-misa" placeholder="Nama misa" class="admin-input">
+                <input type="number" id="input-max-petugas" min="1" step="1" value="4" placeholder="Maks. petugas" aria-label="Maksimal petugas" title="Maksimal petugas" class="admin-input">
                 <button onclick="buatJadwal()" class="primary-button">PUBLISH</button>
             </div>
         </div>
@@ -178,6 +179,7 @@ function setFilter(type) {
             <option value="Minggu 10.00">Minggu 10.00</option>
             <option value="Minggu 18.00">Minggu 18.00</option>
         </select>`;
+    document.getElementById('input-max-petugas').value = type === 'Besar' ? 6 : 4;
     renderSchedules();
 }
 
@@ -203,7 +205,10 @@ function renderSchedules() {
             // Jika tanggal jadwal lebih kecil (lama) dari hari ini, jangan di-render
             if (tglJadwal < hariIni) return;
 
-            const lim = data.kategori === 'Besar' ? 6 : 4;
+            const defaultLimit = data.kategori === 'Besar' ? 6 : 4;
+            const lim = Number.isInteger(Number(data.maxPetugas)) && Number(data.maxPetugas) > 0
+                ? Number(data.maxPetugas)
+                : defaultLimit;
             const count = data.petugas ? Object.keys(data.petugas).length : 0;
             let petugasHtml = "";
             
@@ -243,8 +248,12 @@ function renderSchedules() {
 
 function buatJadwal() {
     const tgl = document.getElementById('input-tgl').value, jam = document.getElementById('input-jam').value, ket = document.getElementById('input-nama-misa').value || "MISA";
+    const maxPetugas = Number(document.getElementById('input-max-petugas').value);
     if(!tgl || !jam) return Swal.fire('Info', 'Lengkapi data!', 'warning');
-    db.ref('schedules').push({ tanggal: tgl, jam, namaMisa: ket, kategori: currentFilter, petugas: {} });
+    if(!Number.isInteger(maxPetugas) || maxPetugas < 1) {
+        return Swal.fire('Info', 'Maksimal petugas harus berupa angka minimal 1.', 'warning');
+    }
+    db.ref('schedules').push({ tanggal: tgl, jam, namaMisa: ket, kategori: currentFilter, maxPetugas, petugas: {} });
     document.getElementById('input-nama-misa').value = "";
 }
 
@@ -373,24 +382,44 @@ function editPetugas(scheduleId, assignmentId) {
 document.addEventListener('click', e => {
     if(e.target.id === 'confirm-daftar') {
         const name = document.getElementById('select-member').value.trim();
-        if(!name) return;
+        if(!name || !selectedScheduleId) return;
 
-        const assignmentsRef = db.ref(`schedules/${selectedScheduleId}/petugas`);
-        const assignmentKey = assignmentsRef.push().key;
-        assignmentsRef.transaction(assignments => {
-            const currentAssignments = assignments || {};
+        const scheduleRef = db.ref(`schedules/${selectedScheduleId}`);
+        const assignmentKey = scheduleRef.child('petugas').push().key;
+        scheduleRef.transaction(schedule => {
+            if(!schedule) return;
+
+            const currentAssignments = schedule.petugas || {};
             const normalizedName = name.toLowerCase();
             const alreadyAssigned = Object.values(currentAssignments).some(assignedName =>
                 String(assignedName).trim().toLowerCase() === normalizedName
             );
 
-            if(alreadyAssigned) return;
-            return { ...currentAssignments, [assignmentKey]: name };
+            const defaultLimit = schedule.kategori === 'Besar' ? 6 : 4;
+            const maxPetugas = Number.isInteger(Number(schedule.maxPetugas)) && Number(schedule.maxPetugas) > 0
+                ? Number(schedule.maxPetugas)
+                : defaultLimit;
+            if(alreadyAssigned || Object.keys(currentAssignments).length >= maxPetugas) return;
+
+            schedule.petugas = { ...currentAssignments, [assignmentKey]: name };
+            return schedule;
         }).then(result => {
             if(result.committed) {
                 closeModal();
+            } else if(!result.snapshot.exists()) {
+                Swal.fire('Jadwal Tidak Ditemukan', 'Jadwal ini mungkin sudah dihapus.', 'warning');
             } else {
-                Swal.fire('Nama Sudah Terdaftar', 'Nama ini sudah ada di jadwal tersebut.', 'info');
+                const schedule = result.snapshot.val();
+                const assignments = schedule.petugas || {};
+                const defaultLimit = schedule.kategori === 'Besar' ? 6 : 4;
+                const maxPetugas = Number.isInteger(Number(schedule.maxPetugas)) && Number(schedule.maxPetugas) > 0
+                    ? Number(schedule.maxPetugas)
+                    : defaultLimit;
+                if(Object.keys(assignments).length >= maxPetugas) {
+                    Swal.fire('Jadwal Penuh', 'Jumlah maksimal petugas untuk jadwal ini sudah terpenuhi.', 'info');
+                } else {
+                    Swal.fire('Nama Sudah Terdaftar', 'Nama ini sudah ada di jadwal tersebut.', 'info');
+                }
             }
         }).catch(error => Swal.fire('Gagal', error.message, 'error'));
     }
