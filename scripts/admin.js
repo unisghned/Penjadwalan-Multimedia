@@ -72,10 +72,22 @@ const UI_APP = `
                 </div>
             </div>
             <div class="schedule-form">
-                <input type="date" id="input-tgl" class="admin-input" aria-label="Tanggal misa">
-                <div id="container-jam"></div>
-                <input type="text" id="input-nama-misa" placeholder="Nama misa" class="admin-input">
-                <input type="number" id="input-max-petugas" min="1" step="1" value="4" placeholder="Maks. petugas" aria-label="Maksimal petugas" title="Maksimal petugas" class="admin-input">
+                <div class="schedule-field">
+                    <label for="input-tgl">Tanggal misa</label>
+                    <input type="date" id="input-tgl" class="admin-input" aria-label="Tanggal misa">
+                </div>
+                <div class="schedule-field">
+                    <label for="input-jam">Jam misa</label>
+                    <div id="container-jam"></div>
+                </div>
+                <div class="schedule-field">
+                    <label for="input-nama-misa">Nama misa</label>
+                    <input type="text" id="input-nama-misa" placeholder="Contoh: Misa Minggu" class="admin-input">
+                </div>
+                <div class="schedule-field">
+                    <label for="input-max-petugas">Maksimal petugas (orang)</label>
+                    <input type="number" id="input-max-petugas" min="1" step="1" value="4" aria-label="Maksimal petugas" class="admin-input">
+                </div>
                 <button onclick="buatJadwal()" class="primary-button">PUBLISH</button>
             </div>
         </div>

@@ -56,7 +56,10 @@ html:not(.dark) .admin-panel, html:not(.dark) .schedule-card, html:not(.dark) .m
 .filter-control { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: rgba(5, 15, 29, 0.28); }
 .filter-button { min-height: 34px; padding: 0 13px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-size: 10px; font-weight: 800; }
 .filter-button.is-active { color: #06212d; background: var(--cyan); }
-.schedule-form { display: grid; grid-template-columns: 1fr 1fr 1.3fr 0.8fr auto; gap: 10px; }
+.schedule-form { display: grid; grid-template-columns: 1fr 1fr 1.3fr 0.8fr auto; gap: 10px; align-items: end; }
+.schedule-field { display: grid; min-width: 0; gap: 6px; }
+.schedule-field > label { color: var(--muted); font-size: 10px; font-weight: 700; }
+.schedule-field > div { min-width: 0; }
 .admin-input, .admin-select {
     width: 100%;
     min-width: 0;
