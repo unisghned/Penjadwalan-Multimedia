@@ -203,6 +203,7 @@ html:not(.dark) .schedule-card {
     font-size: 16px;
     font-weight: 700;
     text-align: center;
+    white-space: nowrap;
 }
 
 .card-bottom {

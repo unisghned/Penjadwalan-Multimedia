@@ -65,41 +65,14 @@ const UI_APP = `
     <section id="tab-jadwal" class="tab-content">
         <div class="admin-panel">
             <div class="panel-heading">
-                <div><h2>Tambah jadwal misa</h2><p>Lengkapi detail misa untuk menerbitkan jadwal.</p></div>
-                <div class="filter-control" aria-label="Jenis misa">
+                <div><h2>Jadwal misa</h2><p>Kelola jadwal dan pendaftaran petugas.</p></div>
+            </div>
+            <div class="schedule-panel-actions">
+                <div class="filter-control" aria-label="Jenis misa yang ditampilkan">
                     <button onclick="setFilter('Biasa')" id="filter-biasa" class="filter-button is-active">BIASA</button>
                     <button onclick="setFilter('Besar')" id="filter-besar" class="filter-button">BESAR</button>
                 </div>
-            </div>
-            <div class="schedule-form">
-                <div class="schedule-field">
-                    <label for="input-tgl">Tanggal misa</label>
-                    <input type="date" id="input-tgl" class="admin-input" aria-label="Tanggal misa">
-                </div>
-                <div class="schedule-field">
-                    <label for="input-jam">Jam misa</label>
-                    <div id="container-jam"></div>
-                </div>
-                <div class="schedule-field">
-                    <label for="input-nama-misa">Nama misa</label>
-                    <input type="text" id="input-nama-misa" placeholder="Contoh: Misa Minggu" class="admin-input">
-                </div>
-                <div class="schedule-field">
-                    <label for="input-max-petugas">Maksimal petugas (orang)</label>
-                    <input type="number" id="input-max-petugas" min="1" step="1" value="4" aria-label="Maksimal petugas" class="admin-input">
-                </div>
-                <div class="schedule-field">
-                    <label for="input-visibility">Penayangan jadwal</label>
-                    <select id="input-visibility" class="admin-select" onchange="togglePublishDaysField()">
-                        <option value="immediate">Langsung tampil</option>
-                        <option value="scheduled">Jadwalkan untuk nanti</option>
-                    </select>
-                </div>
-                <div class="schedule-field hidden" id="publish-days-field">
-                    <label for="input-publish-days">Tampilkan H-berapa?</label>
-                    <input type="number" id="input-publish-days" min="2" max="365" step="1" value="6" aria-label="Berapa hari sebelum misa jadwal ditampilkan" class="admin-input">
-                </div>
-                <button onclick="buatJadwal()" class="primary-button">PUBLISH</button>
+                <button onclick="buatJadwal()" class="primary-button">+ TAMBAH MISA</button>
             </div>
         </div>
         <div id="schedule-list" class="schedule-list admin-schedule-list"></div>
@@ -176,7 +149,6 @@ function initAppModules() {
     document.addEventListener('keypress', e => {
         if (e.key === 'Enter') {
             const el = document.activeElement;
-            if (el.id === 'input-nama-misa') buatJadwal();
             if (el.id === 'member-name') addMember();
         }
     });
@@ -192,6 +164,15 @@ function setFilter(type) {
     besarBtn.classList.toggle('is-active', type === 'Besar');
     
     const container = document.getElementById('container-jam');
+    if(container) renderJamInput(type);
+    const maxPetugasInput = document.getElementById('input-max-petugas');
+    if(maxPetugasInput) maxPetugasInput.value = type === 'Besar' ? 6 : 4;
+    renderSchedules();
+}
+
+function renderJamInput(type) {
+    const container = document.getElementById('container-jam');
+    if(!container) return;
     container.innerHTML = type === 'Besar' ? 
         `<input type="text" id="input-jam" placeholder="Contoh: 17.00" class="admin-input">` :
         `<select id="input-jam" class="admin-select">
@@ -212,8 +193,6 @@ function setFilter(type) {
             if(jamSelect.value === 'custom') jamCustom.focus();
         });
     }
-    document.getElementById('input-max-petugas').value = type === 'Besar' ? 6 : 4;
-    renderSchedules();
 }
 
 function getJamInput() {
@@ -243,9 +222,16 @@ function getSchedulePublishDate(schedule) {
     if(!misaDate || schedule.visibility !== 'scheduled') return misaDate;
 
     const daysBefore = Number(schedule.publishDaysBefore);
-    if(!Number.isInteger(daysBefore) || daysBefore < 2 || daysBefore > 365) return null;
+    if(!Number.isInteger(daysBefore) || daysBefore < 1 || daysBefore > 365) return null;
     misaDate.setDate(misaDate.getDate() - daysBefore);
     return misaDate;
+}
+
+function getScheduleMaxPetugas(schedule) {
+    const maxPetugas = Number(schedule.maxPetugas);
+    return Number.isInteger(maxPetugas) && maxPetugas > 0
+        ? maxPetugas
+        : schedule.kategori === 'Besar' ? 6 : 4;
 }
 
 function renderSchedules() {
@@ -270,10 +256,7 @@ function renderSchedules() {
             // Jika tanggal jadwal lebih kecil (lama) dari hari ini, jangan di-render
             if (tglJadwal < hariIni) return;
 
-            const defaultLimit = data.kategori === 'Besar' ? 6 : 4;
-            const lim = Number.isInteger(Number(data.maxPetugas)) && Number(data.maxPetugas) > 0
-                ? Number(data.maxPetugas)
-                : defaultLimit;
+            const lim = getScheduleMaxPetugas(data);
             const count = data.petugas ? Object.keys(data.petugas).length : 0;
             const publishDate = getSchedulePublishDate(data);
             const visibilityLabel = data.visibility === 'scheduled'
@@ -320,24 +303,83 @@ function renderSchedules() {
 }
 
 function buatJadwal() {
-    const tgl = document.getElementById('input-tgl').value, jam = getJamInput(), ket = document.getElementById('input-nama-misa').value || "MISA";
-    const maxPetugas = Number(document.getElementById('input-max-petugas').value);
-    const visibility = document.getElementById('input-visibility').value;
-    const publishDaysBefore = Number(document.getElementById('input-publish-days').value);
-    if(!tgl || !jam) return Swal.fire('Info', 'Lengkapi tanggal dan jam misa!', 'warning');
-    if(!Number.isInteger(maxPetugas) || maxPetugas < 1) {
-        return Swal.fire('Info', 'Maksimal petugas harus berupa angka minimal 1.', 'warning');
-    }
-    if(!['immediate', 'scheduled'].includes(visibility)) {
-        return Swal.fire('Info', 'Pilih cara penayangan jadwal.', 'warning');
-    }
-    if(visibility === 'scheduled' && (!Number.isInteger(publishDaysBefore) || publishDaysBefore < 2 || publishDaysBefore > 365)) {
-        return Swal.fire('Info', 'Isi H- dengan angka antara 2 sampai 365 hari.', 'warning');
-    }
-    const schedule = { tanggal: tgl, jam, namaMisa: ket, kategori: currentFilter, maxPetugas, visibility, petugas: {} };
-    if(visibility === 'scheduled') schedule.publishDaysBefore = publishDaysBefore;
-    db.ref('schedules').push(schedule);
-    document.getElementById('input-nama-misa').value = "";
+    return Swal.fire({
+        title: 'Tambah Jadwal Misa',
+        html: `
+            <div class="schedule-edit-form schedule-create-form">
+                <label for="input-tgl">Tanggal misa</label>
+                <input type="date" id="input-tgl" class="admin-input">
+                <label for="input-jam">Jam misa</label>
+                <div id="container-jam"></div>
+                <label for="input-nama-misa">Nama misa</label>
+                <input type="text" id="input-nama-misa" placeholder="Contoh: Misa Minggu" class="admin-input">
+                <label for="input-max-petugas">Maksimal petugas (orang)</label>
+                <input type="number" id="input-max-petugas" min="1" step="1" value="${currentFilter === 'Besar' ? 6 : 4}" class="admin-input">
+                <label for="input-visibility">Penayangan jadwal</label>
+                <select id="input-visibility" class="admin-select">
+                    <option value="immediate">Langsung tampil</option>
+                    <option value="scheduled">Jadwalkan untuk nanti</option>
+                </select>
+                <div id="publish-days-field" class="hidden">
+                    <label for="input-publish-days">Tampilkan H-berapa?</label>
+                    <input type="number" id="input-publish-days" min="1" max="365" step="1" value="6" class="admin-input">
+                </div>
+            </div>`,
+        showCancelButton: true,
+        confirmButtonText: 'PUBLISH',
+        cancelButtonText: 'BATAL',
+        confirmButtonColor: '#29c7d9',
+        background: '#172740',
+        color: '#eef4fa',
+        didOpen: () => {
+            renderJamInput(currentFilter);
+            document.getElementById('input-visibility').addEventListener('change', togglePublishDaysField);
+            document.getElementById('input-nama-misa').focus();
+        },
+        preConfirm: () => {
+            const tanggal = document.getElementById('input-tgl').value;
+            const jam = getJamInput();
+            const namaMisa = document.getElementById('input-nama-misa').value.trim() || 'MISA';
+            const maxPetugas = Number(document.getElementById('input-max-petugas').value);
+            const visibility = document.getElementById('input-visibility').value;
+            const publishDaysBefore = Number(document.getElementById('input-publish-days').value);
+
+            if(!tanggal || !jam) {
+                Swal.showValidationMessage('Lengkapi tanggal dan jam misa.');
+                return false;
+            }
+            if(!Number.isInteger(maxPetugas) || maxPetugas < 1) {
+                Swal.showValidationMessage('Maksimal petugas harus berupa angka minimal 1.');
+                return false;
+            }
+            if(!['immediate', 'scheduled'].includes(visibility)) {
+                Swal.showValidationMessage('Pilih cara penayangan jadwal.');
+                return false;
+            }
+            if(visibility === 'scheduled' &&
+                (!Number.isInteger(publishDaysBefore) || publishDaysBefore < 1 || publishDaysBefore > 365)) {
+                Swal.showValidationMessage('Isi H- dengan angka antara 1 sampai 365 hari.');
+                return false;
+            }
+
+            const schedule = {
+                tanggal,
+                jam,
+                namaMisa,
+                kategori: currentFilter,
+                maxPetugas,
+                visibility,
+                petugas: {}
+            };
+            if(visibility === 'scheduled') schedule.publishDaysBefore = publishDaysBefore;
+            return schedule;
+        }
+    }).then(result => {
+        if(!result.isConfirmed) return;
+        return db.ref('schedules').push(result.value)
+            .then(() => Swal.fire('Jadwal Disimpan', 'Jadwal misa berhasil dibuat.', 'success'))
+            .catch(error => Swal.fire('Gagal', error.message, 'error'));
+    });
 }
 
 function editSchedule(scheduleId) {
@@ -348,12 +390,10 @@ function editSchedule(scheduleId) {
             return Swal.fire('Jadwal Tidak Ditemukan', 'Jadwal ini mungkin sudah dihapus.', 'warning');
         }
 
-        const currentLimit = Number.isInteger(Number(schedule.maxPetugas)) && Number(schedule.maxPetugas) > 0
-            ? Number(schedule.maxPetugas)
-            : schedule.kategori === 'Besar' ? 6 : 4;
+        const currentLimit = getScheduleMaxPetugas(schedule);
         const visibility = schedule.visibility === 'scheduled' ? 'scheduled' : 'immediate';
         const publishDaysBefore = Number.isInteger(Number(schedule.publishDaysBefore)) &&
-            Number(schedule.publishDaysBefore) >= 2 &&
+            Number(schedule.publishDaysBefore) >= 1 &&
             Number(schedule.publishDaysBefore) <= 365
             ? Number(schedule.publishDaysBefore)
             : 6;
@@ -380,7 +420,7 @@ function editSchedule(scheduleId) {
                     </select>
                     <div id="edit-publish-days-field" class="${visibility === 'scheduled' ? '' : 'hidden'}">
                         <label for="edit-schedule-publish-days">Tampilkan H-berapa?</label>
-                        <input id="edit-schedule-publish-days" class="admin-input" type="number" min="2" max="365" step="1" value="${publishDaysBefore}">
+                        <input id="edit-schedule-publish-days" class="admin-input" type="number" min="1" max="365" step="1" value="${publishDaysBefore}">
                     </div>
                 </div>`,
             showCancelButton: true,
@@ -424,8 +464,8 @@ function editSchedule(scheduleId) {
                     return false;
                 }
                 if(visibility === 'scheduled' &&
-                    (!Number.isInteger(publishDaysBefore) || publishDaysBefore < 2 || publishDaysBefore > 365)) {
-                    Swal.showValidationMessage('Isi H- dengan angka antara 2 sampai 365 hari.');
+                    (!Number.isInteger(publishDaysBefore) || publishDaysBefore < 1 || publishDaysBefore > 365)) {
+                    Swal.showValidationMessage('Isi H- dengan angka antara 1 sampai 365 hari.');
                     return false;
                 }
                 return {

@@ -93,9 +93,27 @@ function getSchedulePublishDate(schedule) {
     if(!misaDate || schedule.visibility !== 'scheduled') return misaDate;
 
     const daysBefore = Number(schedule.publishDaysBefore);
-    if(!Number.isInteger(daysBefore) || daysBefore < 2 || daysBefore > 365) return null;
+    if(!Number.isInteger(daysBefore) || daysBefore < 1 || daysBefore > 365) return null;
     misaDate.setDate(misaDate.getDate() - daysBefore);
     return misaDate;
+}
+
+function getScheduleMaxPetugas(schedule) {
+    const maxPetugas = Number(schedule.maxPetugas);
+    return Number.isInteger(maxPetugas) && maxPetugas > 0
+        ? maxPetugas
+        : schedule.kategori === 'Besar' ? 6 : 4;
+}
+
+function formatScheduleTime(schedule) {
+    const date = parseScheduleDate(schedule.tanggal);
+    if(!date) return String(schedule.jam || '');
+
+    const weekday = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(date);
+    const time = String(schedule.jam || '')
+        .replace(/^(Senin|Selasa|Rabu|Kamis|Jumat|Sabtu|Minggu)\s+/i, '')
+        .trim();
+    return time ? `${weekday} ${time}` : weekday;
 }
 
 function scheduleGuestVisibilityRefresh() {
@@ -132,12 +150,9 @@ function renderGuestScheduleSnapshot(snap) {
         if(data.visibility === 'scheduled' && (!tanggalTampil || tanggalTampil > hariIni)) return;
 
         visibleSchedules++;
-        const defaultLimit = data.kategori === 'Besar' ? 6 : 4;
-        const lim = Number.isInteger(Number(data.maxPetugas)) && Number(data.maxPetugas) > 0
-            ? Number(data.maxPetugas)
-            : defaultLimit;
+        const lim = getScheduleMaxPetugas(data);
         const count = data.petugas ? Object.keys(data.petugas).length : 0;
-        const waktuSingkat = String(data.jam).replace(/^(Senin|Selasa|Rabu|Kamis|Jumat|Sabtu|Minggu)\s+/i, '');
+        const waktuSingkat = formatScheduleTime(data);
 
         let petugasHtml = "";
         if(data.petugas) {
