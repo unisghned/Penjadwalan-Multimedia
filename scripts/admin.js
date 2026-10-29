@@ -304,6 +304,8 @@ function editSchedule(scheduleId) {
             title: 'Edit Info Misa',
             html: `
                 <div class="schedule-edit-form">
+                    <label for="edit-schedule-name">Nama misa</label>
+                    <input id="edit-schedule-name" class="admin-input" type="text" value="${escapeHtml(schedule.namaMisa || '')}">
                     <label for="edit-schedule-date">Tanggal misa</label>
                     <input id="edit-schedule-date" class="admin-input" type="date" value="${escapeHtml(schedule.tanggal || '')}">
                     <label for="edit-schedule-category">Jenis misa</label>
@@ -321,9 +323,14 @@ function editSchedule(scheduleId) {
             background: '#172740',
             color: '#eef4fa',
             preConfirm: () => {
+                const namaMisa = document.getElementById('edit-schedule-name').value.trim();
                 const tanggal = document.getElementById('edit-schedule-date').value;
                 const kategori = document.getElementById('edit-schedule-category').value;
                 const maxPetugas = Number(document.getElementById('edit-schedule-limit').value);
+                if(!namaMisa) {
+                    Swal.showValidationMessage('Nama misa tidak boleh kosong.');
+                    return false;
+                }
                 if(!tanggal) {
                     Swal.showValidationMessage('Pilih tanggal misa.');
                     return false;
@@ -336,7 +343,7 @@ function editSchedule(scheduleId) {
                     Swal.showValidationMessage('Maksimal petugas harus berupa angka minimal 1.');
                     return false;
                 }
-                return { tanggal, kategori, maxPetugas };
+                return { namaMisa, tanggal, kategori, maxPetugas };
             }
         }).then(result => {
             if(!result.isConfirmed) return;
