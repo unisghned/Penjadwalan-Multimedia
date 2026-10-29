@@ -88,6 +88,7 @@ html:not(.dark) .admin-input, html:not(.dark) .admin-select { background: #f2f6f
 .primary-button:hover { transform: translateY(-1px); background: #72e2eb; }
 .secondary-button, .icon-button { border-color: var(--line); color: var(--text); background: rgba(255,255,255,0.03); }
 .secondary-button:hover, .icon-button:hover { border-color: rgba(41, 199, 217, 0.45); color: var(--cyan); }
+.anonymous-login { width: 100%; }
 .danger-button { border-color: rgba(255, 153, 120, 0.24); color: var(--coral); background: rgba(255, 153, 120, 0.08); }
 .danger-button:hover { background: rgba(255, 153, 120, 0.15); }
 .icon-button { min-height: 32px; padding: 0 10px; font-size: 9px; }

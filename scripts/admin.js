@@ -35,6 +35,7 @@ const UI_LOGIN = `
             <input type="email" id="auth-email" placeholder="Email" class="admin-input" required>
             <input type="password" id="auth-password" placeholder="Password" class="admin-input" required>
             <button type="submit" class="primary-button">MASUK</button>
+            <button type="button" onclick="handleAnonymousLogin()" class="secondary-button anonymous-login">MASUK ANONIM</button>
             <button type="button" onclick="handleRegister()" class="login-register">Daftar Akun Baru</button>
         </form>
     </section>
@@ -107,7 +108,7 @@ auth.onAuthStateChanged(user => {
     const root = document.getElementById('app-root');
     const shield = document.getElementById('shield-overlay');
 
-    if (user && user.emailVerified) {
+    if (user && (user.isAnonymous || user.emailVerified)) {
         root.innerHTML = UI_APP;
         initAppModules();
     } else {
@@ -124,6 +125,15 @@ function handleLogin() {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
     auth.signInWithEmailAndPassword(email, password).catch(err => Swal.fire('Error', 'Gagal Masuk!', 'error'));
+}
+
+function handleAnonymousLogin() {
+    auth.signInAnonymously().catch(error => {
+        const message = error.code === 'auth/operation-not-allowed'
+            ? 'Login anonim belum diaktifkan di Firebase Authentication.'
+            : error.message;
+        Swal.fire('Gagal Masuk Anonim', message, 'error');
+    });
 }
 
 function handleRegister() {
