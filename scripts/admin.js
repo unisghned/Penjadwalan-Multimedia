@@ -250,6 +250,7 @@ function renderSchedules() {
                     <div class="card-actions schedule-admin-actions">
                         <span class="capacity ${count >= lim ? 'capacity-full' : ''}">${count}/${lim}</span>
                         <button onclick="openDaftar('${child.key}','${escapeHtml(data.jam)}')" class="register-button" ${count>=lim?'disabled':''}>${count>=lim?'PENUH':'DAFTAR'}</button>
+                        <button onclick="editSchedule('${child.key}')" class="icon-button" aria-label="Edit info misa" title="Edit info misa">EDIT INFO</button>
                         <button onclick="hapusSatuJadwal('${child.key}')" class="danger-button delete-schedule" aria-label="Hapus jadwal" title="Hapus jadwal">HAPUS</button>
                     </div>
                 </div>
@@ -267,6 +268,64 @@ function buatJadwal() {
     }
     db.ref('schedules').push({ tanggal: tgl, jam, namaMisa: ket, kategori: currentFilter, maxPetugas, petugas: {} });
     document.getElementById('input-nama-misa').value = "";
+}
+
+function editSchedule(scheduleId) {
+    const scheduleRef = db.ref(`schedules/${scheduleId}`);
+    return scheduleRef.once('value').then(snapshot => {
+        const schedule = snapshot.val();
+        if(!schedule) {
+            return Swal.fire('Jadwal Tidak Ditemukan', 'Jadwal ini mungkin sudah dihapus.', 'warning');
+        }
+
+        const currentLimit = Number.isInteger(Number(schedule.maxPetugas)) && Number(schedule.maxPetugas) > 0
+            ? Number(schedule.maxPetugas)
+            : schedule.kategori === 'Besar' ? 6 : 4;
+
+        return Swal.fire({
+            title: 'Edit Info Misa',
+            html: `
+                <div class="schedule-edit-form">
+                    <label for="edit-schedule-date">Tanggal misa</label>
+                    <input id="edit-schedule-date" class="admin-input" type="date" value="${escapeHtml(schedule.tanggal || '')}">
+                    <label for="edit-schedule-category">Jenis misa</label>
+                    <select id="edit-schedule-category" class="admin-select">
+                        <option value="Biasa" ${schedule.kategori === 'Biasa' ? 'selected' : ''}>Misa Biasa</option>
+                        <option value="Besar" ${schedule.kategori === 'Besar' ? 'selected' : ''}>Misa Besar</option>
+                    </select>
+                    <label for="edit-schedule-limit">Maksimal petugas (orang)</label>
+                    <input id="edit-schedule-limit" class="admin-input" type="number" min="1" step="1" value="${currentLimit}">
+                </div>`,
+            showCancelButton: true,
+            confirmButtonText: 'SIMPAN',
+            cancelButtonText: 'BATAL',
+            confirmButtonColor: '#29c7d9',
+            background: '#172740',
+            color: '#eef4fa',
+            preConfirm: () => {
+                const tanggal = document.getElementById('edit-schedule-date').value;
+                const kategori = document.getElementById('edit-schedule-category').value;
+                const maxPetugas = Number(document.getElementById('edit-schedule-limit').value);
+                if(!tanggal) {
+                    Swal.showValidationMessage('Pilih tanggal misa.');
+                    return false;
+                }
+                if(!['Biasa', 'Besar'].includes(kategori)) {
+                    Swal.showValidationMessage('Pilih jenis misa yang valid.');
+                    return false;
+                }
+                if(!Number.isInteger(maxPetugas) || maxPetugas < 1) {
+                    Swal.showValidationMessage('Maksimal petugas harus berupa angka minimal 1.');
+                    return false;
+                }
+                return { tanggal, kategori, maxPetugas };
+            }
+        }).then(result => {
+            if(!result.isConfirmed) return;
+            return scheduleRef.update(result.value)
+                .then(() => Swal.fire('Info Misa Diperbarui', 'Jadwal dan daftar petugas tetap tersimpan.', 'success'));
+        });
+    }).catch(error => Swal.fire('Gagal', error.message, 'error'));
 }
 
 function initMembersListener() {
