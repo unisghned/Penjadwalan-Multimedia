@@ -190,9 +190,27 @@ function setFilter(type) {
             <option value="Minggu 08.00">Minggu 08.00</option>
             <option value="Minggu 10.00">Minggu 10.00</option>
             <option value="Minggu 18.00">Minggu 18.00</option>
-        </select>`;
+            <option value="custom">Jam lainnya (isi sendiri)</option>
+        </select>
+        <input type="text" id="input-jam-custom" placeholder="Contoh: Rabu 18.00" aria-label="Masukkan hari dan jam misa" class="admin-input hidden">`;
+    if(type === 'Biasa') {
+        const jamSelect = document.getElementById('input-jam');
+        const jamCustom = document.getElementById('input-jam-custom');
+        jamSelect.addEventListener('change', () => {
+            jamCustom.classList.toggle('hidden', jamSelect.value !== 'custom');
+            if(jamSelect.value === 'custom') jamCustom.focus();
+        });
+    }
     document.getElementById('input-max-petugas').value = type === 'Besar' ? 6 : 4;
     renderSchedules();
+}
+
+function getJamInput() {
+    const jamInput = document.getElementById('input-jam');
+    if(currentFilter === 'Biasa' && jamInput.value === 'custom') {
+        return document.getElementById('input-jam-custom').value.trim();
+    }
+    return jamInput.value.trim();
 }
 
 function renderSchedules() {
@@ -260,9 +278,9 @@ function renderSchedules() {
 }
 
 function buatJadwal() {
-    const tgl = document.getElementById('input-tgl').value, jam = document.getElementById('input-jam').value, ket = document.getElementById('input-nama-misa').value || "MISA";
+    const tgl = document.getElementById('input-tgl').value, jam = getJamInput(), ket = document.getElementById('input-nama-misa').value || "MISA";
     const maxPetugas = Number(document.getElementById('input-max-petugas').value);
-    if(!tgl || !jam) return Swal.fire('Info', 'Lengkapi data!', 'warning');
+    if(!tgl || !jam) return Swal.fire('Info', 'Lengkapi tanggal dan jam misa!', 'warning');
     if(!Number.isInteger(maxPetugas) || maxPetugas < 1) {
         return Swal.fire('Info', 'Maksimal petugas harus berupa angka minimal 1.', 'warning');
     }
