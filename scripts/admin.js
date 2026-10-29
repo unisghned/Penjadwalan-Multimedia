@@ -88,6 +88,17 @@ const UI_APP = `
                     <label for="input-max-petugas">Maksimal petugas (orang)</label>
                     <input type="number" id="input-max-petugas" min="1" step="1" value="4" aria-label="Maksimal petugas" class="admin-input">
                 </div>
+                <div class="schedule-field">
+                    <label for="input-visibility">Penayangan jadwal</label>
+                    <select id="input-visibility" class="admin-select" onchange="togglePublishDaysField()">
+                        <option value="immediate">Langsung tampil</option>
+                        <option value="scheduled">Jadwalkan untuk nanti</option>
+                    </select>
+                </div>
+                <div class="schedule-field hidden" id="publish-days-field">
+                    <label for="input-publish-days">Tampilkan H-berapa?</label>
+                    <input type="number" id="input-publish-days" min="2" max="365" step="1" value="6" aria-label="Berapa hari sebelum misa jadwal ditampilkan" class="admin-input">
+                </div>
                 <button onclick="buatJadwal()" class="primary-button">PUBLISH</button>
             </div>
         </div>
@@ -213,6 +224,30 @@ function getJamInput() {
     return jamInput.value.trim();
 }
 
+function togglePublishDaysField() {
+    const visibility = document.getElementById('input-visibility').value;
+    document.getElementById('publish-days-field').classList.toggle('hidden', visibility !== 'scheduled');
+}
+
+function parseScheduleDate(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+    if(!match) return null;
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    return date.getFullYear() === Number(match[1]) &&
+        date.getMonth() === Number(match[2]) - 1 &&
+        date.getDate() === Number(match[3]) ? date : null;
+}
+
+function getSchedulePublishDate(schedule) {
+    const misaDate = parseScheduleDate(schedule.tanggal);
+    if(!misaDate || schedule.visibility !== 'scheduled') return misaDate;
+
+    const daysBefore = Number(schedule.publishDaysBefore);
+    if(!Number.isInteger(daysBefore) || daysBefore < 2 || daysBefore > 365) return null;
+    misaDate.setDate(misaDate.getDate() - daysBefore);
+    return misaDate;
+}
+
 function renderSchedules() {
     db.ref('schedules').on('value', snap => {
         const list = document.getElementById('schedule-list');
@@ -229,8 +264,8 @@ function renderSchedules() {
 
             // LOGIC FILTER TANGGAL:
             // Ubah string tanggal dari Firebase (YYYY-MM-DD) jadi objek Date
-            const tglJadwal = new Date(data.tanggal);
-            tglJadwal.setHours(0, 0, 0, 0);
+            const tglJadwal = parseScheduleDate(data.tanggal);
+            if(!tglJadwal) return;
 
             // Jika tanggal jadwal lebih kecil (lama) dari hari ini, jangan di-render
             if (tglJadwal < hariIni) return;
@@ -240,6 +275,12 @@ function renderSchedules() {
                 ? Number(data.maxPetugas)
                 : defaultLimit;
             const count = data.petugas ? Object.keys(data.petugas).length : 0;
+            const publishDate = getSchedulePublishDate(data);
+            const visibilityLabel = data.visibility === 'scheduled'
+                ? publishDate
+                    ? `Tampil publik mulai ${publishDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                    : 'Jadwal tayang memiliki pengaturan H- yang tidak valid'
+                : 'Tampil langsung';
             let petugasHtml = "";
             
             if(data.petugas) {
@@ -258,6 +299,7 @@ function renderSchedules() {
                     <span class="service-type ${data.kategori === 'Besar' ? 'large' : ''}">${escapeHtml(data.kategori)}</span>
                     <h3 class="service-name">${escapeHtml(data.namaMisa)}</h3>
                     <p class="service-date">${escapeHtml(data.tanggal)}</p>
+                    <p class="schedule-visibility">${escapeHtml(visibilityLabel)}</p>
                 </div>
                 <div class="time-block">${escapeHtml(data.jam)}</div>
                 <div class="card-bottom">
@@ -280,11 +322,21 @@ function renderSchedules() {
 function buatJadwal() {
     const tgl = document.getElementById('input-tgl').value, jam = getJamInput(), ket = document.getElementById('input-nama-misa').value || "MISA";
     const maxPetugas = Number(document.getElementById('input-max-petugas').value);
+    const visibility = document.getElementById('input-visibility').value;
+    const publishDaysBefore = Number(document.getElementById('input-publish-days').value);
     if(!tgl || !jam) return Swal.fire('Info', 'Lengkapi tanggal dan jam misa!', 'warning');
     if(!Number.isInteger(maxPetugas) || maxPetugas < 1) {
         return Swal.fire('Info', 'Maksimal petugas harus berupa angka minimal 1.', 'warning');
     }
-    db.ref('schedules').push({ tanggal: tgl, jam, namaMisa: ket, kategori: currentFilter, maxPetugas, petugas: {} });
+    if(!['immediate', 'scheduled'].includes(visibility)) {
+        return Swal.fire('Info', 'Pilih cara penayangan jadwal.', 'warning');
+    }
+    if(visibility === 'scheduled' && (!Number.isInteger(publishDaysBefore) || publishDaysBefore < 2 || publishDaysBefore > 365)) {
+        return Swal.fire('Info', 'Isi H- dengan angka antara 2 sampai 365 hari.', 'warning');
+    }
+    const schedule = { tanggal: tgl, jam, namaMisa: ket, kategori: currentFilter, maxPetugas, visibility, petugas: {} };
+    if(visibility === 'scheduled') schedule.publishDaysBefore = publishDaysBefore;
+    db.ref('schedules').push(schedule);
     document.getElementById('input-nama-misa').value = "";
 }
 
@@ -299,6 +351,12 @@ function editSchedule(scheduleId) {
         const currentLimit = Number.isInteger(Number(schedule.maxPetugas)) && Number(schedule.maxPetugas) > 0
             ? Number(schedule.maxPetugas)
             : schedule.kategori === 'Besar' ? 6 : 4;
+        const visibility = schedule.visibility === 'scheduled' ? 'scheduled' : 'immediate';
+        const publishDaysBefore = Number.isInteger(Number(schedule.publishDaysBefore)) &&
+            Number(schedule.publishDaysBefore) >= 2 &&
+            Number(schedule.publishDaysBefore) <= 365
+            ? Number(schedule.publishDaysBefore)
+            : 6;
 
         return Swal.fire({
             title: 'Edit Info Misa',
@@ -315,6 +373,15 @@ function editSchedule(scheduleId) {
                     </select>
                     <label for="edit-schedule-limit">Maksimal petugas (orang)</label>
                     <input id="edit-schedule-limit" class="admin-input" type="number" min="1" step="1" value="${currentLimit}">
+                    <label for="edit-schedule-visibility">Penayangan jadwal</label>
+                    <select id="edit-schedule-visibility" class="admin-select">
+                        <option value="immediate" ${visibility === 'immediate' ? 'selected' : ''}>Langsung tampil</option>
+                        <option value="scheduled" ${visibility === 'scheduled' ? 'selected' : ''}>Jadwalkan untuk nanti</option>
+                    </select>
+                    <div id="edit-publish-days-field" class="${visibility === 'scheduled' ? '' : 'hidden'}">
+                        <label for="edit-schedule-publish-days">Tampilkan H-berapa?</label>
+                        <input id="edit-schedule-publish-days" class="admin-input" type="number" min="2" max="365" step="1" value="${publishDaysBefore}">
+                    </div>
                 </div>`,
             showCancelButton: true,
             confirmButtonText: 'SIMPAN',
@@ -322,11 +389,20 @@ function editSchedule(scheduleId) {
             confirmButtonColor: '#29c7d9',
             background: '#172740',
             color: '#eef4fa',
+            didOpen: () => {
+                const visibilityInput = document.getElementById('edit-schedule-visibility');
+                const publishDaysField = document.getElementById('edit-publish-days-field');
+                visibilityInput.addEventListener('change', () => {
+                    publishDaysField.classList.toggle('hidden', visibilityInput.value !== 'scheduled');
+                });
+            },
             preConfirm: () => {
                 const namaMisa = document.getElementById('edit-schedule-name').value.trim();
                 const tanggal = document.getElementById('edit-schedule-date').value;
                 const kategori = document.getElementById('edit-schedule-category').value;
                 const maxPetugas = Number(document.getElementById('edit-schedule-limit').value);
+                const visibility = document.getElementById('edit-schedule-visibility').value;
+                const publishDaysBefore = Number(document.getElementById('edit-schedule-publish-days').value);
                 if(!namaMisa) {
                     Swal.showValidationMessage('Nama misa tidak boleh kosong.');
                     return false;
@@ -343,7 +419,23 @@ function editSchedule(scheduleId) {
                     Swal.showValidationMessage('Maksimal petugas harus berupa angka minimal 1.');
                     return false;
                 }
-                return { namaMisa, tanggal, kategori, maxPetugas };
+                if(!['immediate', 'scheduled'].includes(visibility)) {
+                    Swal.showValidationMessage('Pilih cara penayangan jadwal.');
+                    return false;
+                }
+                if(visibility === 'scheduled' &&
+                    (!Number.isInteger(publishDaysBefore) || publishDaysBefore < 2 || publishDaysBefore > 365)) {
+                    Swal.showValidationMessage('Isi H- dengan angka antara 2 sampai 365 hari.');
+                    return false;
+                }
+                return {
+                    namaMisa,
+                    tanggal,
+                    kategori,
+                    maxPetugas,
+                    visibility,
+                    publishDaysBefore: visibility === 'scheduled' ? publishDaysBefore : null
+                };
             }
         }).then(result => {
             if(!result.isConfirmed) return;

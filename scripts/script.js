@@ -13,6 +13,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let availableMembers = [];
+let guestSchedulesSnapshot = null;
 
 function getGuestThemeOptions() {
     const styles = getComputedStyle(document.documentElement);
@@ -78,39 +79,78 @@ db.ref('members').on('value', snap => {
 })();
 
 // --- 3. LOGIKA TAMPILAN JADWAL UNTUK PUBLIK ---
+function parseScheduleDate(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+    if(!match) return null;
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    return date.getFullYear() === Number(match[1]) &&
+        date.getMonth() === Number(match[2]) - 1 &&
+        date.getDate() === Number(match[3]) ? date : null;
+}
+
+function getSchedulePublishDate(schedule) {
+    const misaDate = parseScheduleDate(schedule.tanggal);
+    if(!misaDate || schedule.visibility !== 'scheduled') return misaDate;
+
+    const daysBefore = Number(schedule.publishDaysBefore);
+    if(!Number.isInteger(daysBefore) || daysBefore < 2 || daysBefore > 365) return null;
+    misaDate.setDate(misaDate.getDate() - daysBefore);
+    return misaDate;
+}
+
+function scheduleGuestVisibilityRefresh() {
+    const nextMidnight = new Date();
+    nextMidnight.setHours(24, 0, 1, 0);
+    setTimeout(() => {
+        if(guestSchedulesSnapshot) renderGuestScheduleSnapshot(guestSchedulesSnapshot);
+        scheduleGuestVisibilityRefresh();
+    }, nextMidnight.getTime() - Date.now());
+}
+
 function renderGuestSchedules() {
     db.ref('schedules').on('value', snap => {
-        const list = document.getElementById('guest-schedule-list');
-        if(!list) return;
-        list.innerHTML = "";
-        let visibleSchedules = 0;
-        
-        const hariIni = new Date();
-        hariIni.setHours(0,0,0,0);
+        guestSchedulesSnapshot = snap;
+        renderGuestScheduleSnapshot(snap);
+    });
+    scheduleGuestVisibilityRefresh();
+}
 
-        snap.forEach(child => {
-            const data = child.val();
-            const tglJadwal = new Date(data.tanggal);
-            tglJadwal.setHours(0,0,0,0);
+function renderGuestScheduleSnapshot(snap) {
+    const list = document.getElementById('guest-schedule-list');
+    if(!list) return;
+    list.innerHTML = "";
+    let visibleSchedules = 0;
 
-            if(tglJadwal >= hariIni) {
-                visibleSchedules++;
-                const lim = data.kategori === 'Besar' ? 6 : 4;
-                const count = data.petugas ? Object.keys(data.petugas).length : 0;
-                const waktuSingkat = String(data.jam).replace(/^(Senin|Selasa|Rabu|Kamis|Jumat|Sabtu|Minggu)\s+/i, '');
-                
-                let petugasHtml = "";
-                if(data.petugas) {
-                    Object.keys(data.petugas).forEach(pKey => {
-                        petugasHtml += `
+    const hariIni = new Date();
+    hariIni.setHours(0, 0, 0, 0);
+
+    snap.forEach(child => {
+        const data = child.val();
+        const tglJadwal = parseScheduleDate(data.tanggal);
+        const tanggalTampil = getSchedulePublishDate(data);
+        if(!tglJadwal || tglJadwal < hariIni) return;
+        if(data.visibility === 'scheduled' && (!tanggalTampil || tanggalTampil > hariIni)) return;
+
+        visibleSchedules++;
+        const defaultLimit = data.kategori === 'Besar' ? 6 : 4;
+        const lim = Number.isInteger(Number(data.maxPetugas)) && Number(data.maxPetugas) > 0
+            ? Number(data.maxPetugas)
+            : defaultLimit;
+        const count = data.petugas ? Object.keys(data.petugas).length : 0;
+        const waktuSingkat = String(data.jam).replace(/^(Senin|Selasa|Rabu|Kamis|Jumat|Sabtu|Minggu)\s+/i, '');
+
+        let petugasHtml = "";
+        if(data.petugas) {
+            Object.keys(data.petugas).forEach(pKey => {
+                petugasHtml += `
                         <span class="roster-name">
                             ${data.petugas[pKey]}
                             <button onclick="removePetugas('${child.key}','${pKey}')" class="roster-remove" aria-label="Hapus ${data.petugas[pKey]}">×</button>
                         </span>`;
-                    });
-                }
+            });
+        }
 
-                list.innerHTML += `
+        list.innerHTML += `
                 <article class="schedule-card">
                     <div class="card-main">
                         <span class="service-type ${data.kategori === 'Besar' ? 'large' : ''}">${data.kategori}</span>
@@ -131,14 +171,12 @@ function renderGuestSchedules() {
                         </div>
                     </div>
                 </article>`;
-            }
-        });
-
-        document.getElementById('schedule-count').textContent = `${visibleSchedules} MISA`;
-        if(visibleSchedules === 0) {
-            list.innerHTML = '<p class="empty-state">Belum ada jadwal misa mendatang.</p>';
-        }
     });
+
+    document.getElementById('schedule-count').textContent = `${visibleSchedules} MISA`;
+    if(visibleSchedules === 0) {
+        list.innerHTML = '<p class="empty-state">Belum ada jadwal misa mendatang.</p>';
+    }
 }
 
 function formatScheduleDate(value) {
