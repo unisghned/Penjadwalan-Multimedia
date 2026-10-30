@@ -6,7 +6,6 @@ let currentFilter = 'Biasa';
 let selectedScheduleId = null;
 let membersCache = {};
 let schedulesCache = {};
-let scheduleViewMode = 'list';
 let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selectedCalendarDate = getLocalDateKey(new Date());
 
@@ -65,7 +64,11 @@ const UI_APP = `
             <div class="dashboard-summary" id="dashboard-summary">
                 <article class="summary-card"><span>Jadwal mendatang</span><strong id="summary-upcoming">0</strong></article>
                 <article class="summary-card"><span>Menunggu penayangan</span><strong id="summary-scheduled">0</strong></article>
-                <article class="summary-card"><span>Masih butuh petugas</span><strong id="summary-needs-staff">0</strong></article>
+                <article class="summary-card summary-needs-staff">
+                    <span>Masih butuh petugas (&lt;50% kuota)</span>
+                    <strong id="summary-needs-staff">0</strong>
+                    <div id="summary-needs-staff-details" class="summary-details"></div>
+                </article>
                 <article class="summary-card"><span>Kuota penuh</span><strong id="summary-full">0</strong></article>
             </div>
             <div class="schedule-panel-actions">
@@ -75,26 +78,8 @@ const UI_APP = `
                 </div>
                 <button onclick="buatJadwal()" class="primary-button">+ TAMBAH MISA</button>
             </div>
-            <div class="schedule-tools">
-                <label class="search-control"><span class="sr-only">Cari nama atau jam misa</span><input id="schedule-search" class="admin-input" type="search" placeholder="Cari nama atau jam misa..."></label>
-                <label class="filter-field">Status
-                    <select id="schedule-status-filter" class="admin-select">
-                        <option value="all">Semua status</option>
-                        <option value="needs-staff">Masih butuh petugas</option>
-                        <option value="full">Kuota penuh</option>
-                    </select>
-                </label>
-                <label class="filter-field">Dari tanggal<input id="schedule-date-from" class="admin-input" type="date"></label>
-                <label class="filter-field">Sampai tanggal<input id="schedule-date-to" class="admin-input" type="date"></label>
-                <button onclick="resetScheduleFilters()" class="secondary-button">RESET FILTER</button>
-                <div class="view-toggle" aria-label="Mode tampilan jadwal">
-                    <button id="view-list-button" onclick="setScheduleView('list')" class="secondary-button is-selected">DAFTAR</button>
-                    <button id="view-calendar-button" onclick="setScheduleView('calendar')" class="secondary-button">KALENDER</button>
-                </div>
-            </div>
         </div>
-        <div id="schedule-list" class="schedule-list admin-schedule-list"></div>
-        <section id="schedule-calendar" class="schedule-calendar hidden" aria-label="Kalender jadwal misa"></section>
+        <section id="schedule-calendar" class="schedule-calendar" aria-label="Kalender jadwal misa"></section>
     </section>
 
     <section id="tab-tayang" class="tab-content hidden">
@@ -186,7 +171,6 @@ function initAppModules() {
     setFilter('Biasa');
     initClock();
     initMembersListener();
-    initScheduleControls();
     
     // Global Keypress for Enter
     document.addEventListener('keypress', e => {
@@ -249,19 +233,11 @@ function initSchedulesListener() {
         snap.forEach(child => {
             schedulesCache[child.key] = child.val();
         });
-        renderSchedules();
         renderScheduledSchedules();
         renderDashboardSummary();
         renderCalendar();
         renderMembers();
     }, error => Swal.fire('Gagal Memuat Jadwal', error.message, 'error'));
-}
-
-function initScheduleControls() {
-    ['schedule-search', 'schedule-status-filter', 'schedule-date-from', 'schedule-date-to'].forEach(id => {
-        const control = document.getElementById(id);
-        control.addEventListener(id === 'schedule-search' ? 'input' : 'change', refreshScheduleViews);
-    });
 }
 
 function getUpcomingSchedules(includeScheduled = false) {
@@ -285,9 +261,10 @@ function renderDashboardSummary() {
     });
     const waiting = upcoming.filter(([, schedule]) => schedule.visibility === 'scheduled' && schedule.manualPublished !== true &&
         (!getSchedulePublishDate(schedule) || getSchedulePublishDate(schedule) > today));
-    const needsStaff = visibleSchedules.filter(([, schedule]) =>
-        Object.keys(schedule.petugas || {}).length < getScheduleMaxPetugas(schedule)
-    );
+    const needsStaff = visibleSchedules.filter(([, schedule]) => {
+        const limit = getScheduleMaxPetugas(schedule);
+        return Object.keys(schedule.petugas || {}).length / limit < 0.5;
+    });
     const full = visibleSchedules.filter(([, schedule]) =>
         Object.keys(schedule.petugas || {}).length >= getScheduleMaxPetugas(schedule)
     );
@@ -295,48 +272,18 @@ function renderDashboardSummary() {
     document.getElementById('summary-scheduled').textContent = waiting.length;
     document.getElementById('summary-needs-staff').textContent = needsStaff.length;
     document.getElementById('summary-full').textContent = full.length;
-}
-
-function resetScheduleFilters() {
-    document.getElementById('schedule-search').value = '';
-    document.getElementById('schedule-status-filter').value = 'all';
-    document.getElementById('schedule-date-from').value = '';
-    document.getElementById('schedule-date-to').value = '';
-    refreshScheduleViews();
+    document.getElementById('summary-needs-staff-details').innerHTML = needsStaff.length
+        ? needsStaff.map(([, schedule]) => {
+            const weekday = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(parseScheduleDate(schedule.tanggal));
+            const time = String(schedule.jam || '').replace(/^(Senin|Selasa|Rabu|Kamis|Jumat|Sabtu|Minggu)\s+/i, '');
+            const assigned = Object.keys(schedule.petugas || {}).length;
+            return `<span>${escapeHtml(weekday)} ${escapeHtml(time)} <small>${assigned}/${getScheduleMaxPetugas(schedule)} petugas</small></span>`;
+        }).join('')
+        : '<span>Semua jadwal sudah mencapai 50% kuota.</span>';
 }
 
 function refreshScheduleViews() {
-    renderSchedules();
-    if(scheduleViewMode === 'calendar') renderCalendar();
-}
-
-function setScheduleView(view) {
-    scheduleViewMode = view;
-    const list = document.getElementById('schedule-list');
-    const calendar = document.getElementById('schedule-calendar');
-    list.classList.toggle('hidden', view !== 'list');
-    calendar.classList.toggle('hidden', view !== 'calendar');
-    document.getElementById('view-list-button').classList.toggle('is-selected', view === 'list');
-    document.getElementById('view-calendar-button').classList.toggle('is-selected', view === 'calendar');
-    if(view === 'calendar') renderCalendar();
-}
-
-function getFilteredSchedules() {
-    const query = document.getElementById('schedule-search').value.trim().toLocaleLowerCase('id-ID');
-    const status = document.getElementById('schedule-status-filter').value;
-    const from = document.getElementById('schedule-date-from').value;
-    const to = document.getElementById('schedule-date-to').value;
-    return getUpcomingSchedules().filter(([, schedule]) => {
-        const count = Object.keys(schedule.petugas || {}).length;
-        const limit = getScheduleMaxPetugas(schedule);
-        const searchText = `${schedule.namaMisa || ''} ${schedule.jam || ''} ${schedule.tanggal || ''}`.toLocaleLowerCase('id-ID');
-        if(schedule.kategori !== currentFilter || (query && !searchText.includes(query))) return false;
-        if(status === 'needs-staff' && count >= limit) return false;
-        if(status === 'full' && count < limit) return false;
-        if(from && schedule.tanggal < from) return false;
-        if(to && schedule.tanggal > to) return false;
-        return true;
-    });
+    renderCalendar();
 }
 
 function renderScheduleCard(id, data) {
@@ -365,9 +312,8 @@ function renderScheduleCard(id, data) {
             <div class="card-actions schedule-admin-actions">
                 <span class="capacity ${count >= limit ? 'capacity-full' : ''}">${count}/${limit}</span>
                 <button onclick="openDaftar('${id}','${escapeHtml(data.jam || '')}')" class="register-button" ${count >= limit ? 'disabled' : ''}>${count >= limit ? 'PENUH' : 'TAMBAH PETUGAS'}</button>
-                <button onclick="previewSchedule('${id}')" class="secondary-button">PRATINJAU</button>
                 <button onclick="editSchedule('${id}')" class="icon-button" aria-label="Edit info misa" title="Edit info misa">EDIT INFO</button>
-                <button onclick="duplicateSchedule('${id}')" class="icon-button" aria-label="Duplikasi jadwal misa">DUPLIKASI</button>
+                <button onclick="duplicateSchedule('${id}')" class="icon-button duplicate-button" aria-label="Duplikasi jadwal misa" title="Duplikasi jadwal">⧉</button>
                 <button onclick="hapusSatuJadwal('${id}')" class="danger-button delete-schedule" aria-label="Hapus jadwal" title="Hapus jadwal">HAPUS</button>
             </div>
         </div>
@@ -405,14 +351,6 @@ function getScheduleMaxPetugas(schedule) {
         : schedule.kategori === 'Besar' ? 6 : 4;
 }
 
-function renderSchedules() {
-    const list = document.getElementById('schedule-list');
-    if(!list) return;
-    const schedules = getFilteredSchedules();
-    list.innerHTML = schedules.map(([id, data]) => renderScheduleCard(id, data)).join('') ||
-        '<p class="empty-state">Tidak ada jadwal yang cocok dengan filter ini.</p>';
-}
-
 function formatScheduleDate(value) {
     const date = value instanceof Date ? value : parseScheduleDate(value);
     if(!date) return String(value || '');
@@ -447,37 +385,6 @@ function confirmScheduleConflicts(schedule, excludedId = '') {
         background: '#172740',
         color: '#eef4fa'
     }).then(result => result.isConfirmed);
-}
-
-function getSchedulePreviewMarkup(schedule) {
-    const count = Object.keys(schedule.petugas || {}).length;
-    const limit = getScheduleMaxPetugas(schedule);
-    const date = schedule.tanggal ? formatScheduleDate(schedule.tanggal) : 'Pilih tanggal misa';
-    const time = schedule.jam || 'Pilih jam misa';
-    return `<article class="preview-card">
-        <span class="service-type ${schedule.kategori === 'Besar' ? 'large' : ''}">${escapeHtml(schedule.kategori || 'Biasa')}</span>
-        <h3>${escapeHtml(schedule.namaMisa || 'Nama misa')}</h3>
-        <p>${escapeHtml(date)} · ${escapeHtml(time)}</p>
-        <span class="preview-capacity">Petugas ${count}/${limit}</span>
-    </article>`;
-}
-
-function updateSchedulePreview(schedule) {
-    const preview = document.getElementById('schedule-live-preview');
-    if(preview) preview.innerHTML = getSchedulePreviewMarkup(schedule);
-}
-
-function previewSchedule(scheduleId) {
-    const schedule = schedulesCache[scheduleId];
-    if(!schedule) return Swal.fire('Jadwal Tidak Ditemukan', 'Jadwal ini mungkin sudah dihapus.', 'warning');
-    return Swal.fire({
-        title: 'Pratinjau Halaman Utama',
-        html: getSchedulePreviewMarkup(schedule),
-        confirmButtonText: 'SELESAI',
-        confirmButtonColor: '#29c7d9',
-        background: '#172740',
-        color: '#eef4fa'
-    });
 }
 
 function duplicateSchedule(scheduleId) {
@@ -522,9 +429,8 @@ function renderScheduledSchedules() {
             <div class="scheduled-actions">
                 <span class="capacity ${assignedCount >= limit ? 'capacity-full' : ''}">${assignedCount}/${limit} PETUGAS</span>
                 ${action}
-                <button onclick="previewSchedule('${id}')" class="secondary-button">PRATINJAU</button>
                 <button onclick="editSchedule('${id}')" class="icon-button">EDIT INFO</button>
-                <button onclick="duplicateSchedule('${id}')" class="icon-button">DUPLIKASI</button>
+                <button onclick="duplicateSchedule('${id}')" class="icon-button duplicate-button" aria-label="Duplikasi jadwal misa" title="Duplikasi jadwal">⧉</button>
                 <button onclick="hapusSatuJadwal('${id}')" class="danger-button delete-schedule">HAPUS</button>
             </div>
         </article>`;
@@ -534,7 +440,7 @@ function renderScheduledSchedules() {
 function renderCalendar() {
     const calendar = document.getElementById('schedule-calendar');
     if(!calendar) return;
-    const schedules = getFilteredSchedules();
+    const schedules = getUpcomingSchedules().filter(([, schedule]) => schedule.kategori === currentFilter);
     const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
     const offset = (monthStart.getDay() + 6) % 7;
     const monthLength = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
@@ -608,7 +514,6 @@ function buatJadwal(prefill = {}) {
                     <label for="input-publish-days">Tampilkan H-berapa?</label>
                     <input type="number" id="input-publish-days" min="1" max="365" step="1" value="${Number(prefill.publishDaysBefore) || 6}" class="admin-input">
                 </div>
-                <div class="preview-wrap"><span>Pratinjau tampilan halaman utama</span><div id="schedule-live-preview"></div></div>
             </div>`,
         showCancelButton: true,
         confirmButtonText: 'PUBLISH',
@@ -619,22 +524,10 @@ function buatJadwal(prefill = {}) {
         didOpen: () => {
             renderJamInput(category, prefill.jam || '');
             document.getElementById('input-visibility').addEventListener('change', togglePublishDaysField);
-            const updatePreview = () => updateSchedulePreview({
-                namaMisa: document.getElementById('input-nama-misa').value,
-                tanggal: document.getElementById('input-tgl').value,
-                jam: getJamInput(),
-                kategori: category,
-                maxPetugas: document.getElementById('input-max-petugas').value
-            });
-            document.querySelectorAll('#input-tgl, #input-nama-misa, #input-max-petugas, #input-jam, #input-jam-custom')
-                .forEach(input => input.addEventListener('input', updatePreview));
             const timeInput = document.getElementById('input-jam');
             timeInput.addEventListener('change', () => {
                 if(timeInput.value === 'custom') document.getElementById('input-jam-custom').focus();
-                updatePreview();
             });
-            document.getElementById('input-jam-custom')?.addEventListener('input', updatePreview);
-            updatePreview();
             document.getElementById('input-nama-misa').focus();
         },
         preConfirm: () => {
@@ -726,7 +619,6 @@ function editSchedule(scheduleId) {
                         <label for="edit-schedule-publish-days">Tampilkan H-berapa?</label>
                         <input id="edit-schedule-publish-days" class="admin-input" type="number" min="1" max="365" step="1" value="${publishDaysBefore}">
                     </div>
-                    <div class="preview-wrap"><span>Pratinjau tampilan halaman utama</span><div id="schedule-live-preview"></div></div>
                 </div>`,
             showCancelButton: true,
             confirmButtonText: 'SIMPAN',
@@ -740,18 +632,6 @@ function editSchedule(scheduleId) {
                 visibilityInput.addEventListener('change', () => {
                     publishDaysField.classList.toggle('hidden', visibilityInput.value !== 'scheduled');
                 });
-                const updatePreview = () => updateSchedulePreview({
-                    namaMisa: document.getElementById('edit-schedule-name').value,
-                    tanggal: document.getElementById('edit-schedule-date').value,
-                    jam: schedule.jam,
-                    kategori: document.getElementById('edit-schedule-category').value,
-                    maxPetugas: document.getElementById('edit-schedule-limit').value,
-                    petugas: schedule.petugas || {}
-                });
-                document.querySelectorAll('#edit-schedule-name, #edit-schedule-date, #edit-schedule-category, #edit-schedule-limit')
-                    .forEach(input => input.addEventListener('input', updatePreview));
-                document.getElementById('edit-schedule-category').addEventListener('change', updatePreview);
-                updatePreview();
             },
             preConfirm: () => {
                 const namaMisa = document.getElementById('edit-schedule-name').value.trim();
