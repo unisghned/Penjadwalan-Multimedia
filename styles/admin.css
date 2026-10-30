@@ -58,6 +58,15 @@ html:not(.dark) .admin-panel, html:not(.dark) .schedule-card, html:not(.dark) .m
 .filter-button { min-height: 34px; padding: 0 13px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-size: 10px; font-weight: 800; }
 .filter-button.is-active { color: #06212d; background: var(--cyan); }
 .schedule-panel-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dashboard-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0 0 20px; }
+.summary-card { display: grid; gap: 7px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: rgba(5, 15, 29, 0.22); }
+.summary-card span { color: var(--muted); font-size: 10px; }
+.summary-card strong { color: var(--cyan); font-family: 'Space Mono', monospace; font-size: 23px; }
+.schedule-tools { display: grid; grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(120px, 1fr)) auto auto; align-items: end; gap: 9px; margin-top: 16px; }
+.search-control, .filter-field { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.view-toggle { display: flex; gap: 5px; }
+.view-toggle .is-selected { border-color: rgba(41, 199, 217, 0.5); color: var(--cyan); background: rgba(41, 199, 217, 0.09); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
 .admin-input, .admin-select {
     width: 100%;
     min-width: 0;
@@ -109,6 +118,24 @@ html:not(.dark) .admin-input, html:not(.dark) .admin-select { background: #f2f6f
 .scheduled-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .scheduled-actions button:disabled { opacity: 0.6; cursor: default; }
 .empty-state { padding: 20px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); text-align: center; font-size: 12px; }
+.schedule-calendar { margin-top: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.calendar-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.calendar-heading h2 { margin: 0; font-size: 16px; text-transform: capitalize; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.calendar-weekdays { margin-bottom: 5px; color: var(--muted); font-size: 10px; font-weight: 800; text-align: center; }
+.calendar-weekdays span { padding: 7px 0; }
+.calendar-day { display: grid; min-height: 62px; align-content: start; justify-items: start; gap: 5px; padding: 8px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: var(--surface-raised); text-align: left; }
+.calendar-day:hover, .calendar-day.selected-day { border-color: var(--cyan); }
+.calendar-day.outside-month { opacity: 0.4; }
+.calendar-day.has-events { background: rgba(41, 199, 217, 0.1); }
+.calendar-day small { color: var(--cyan); font-size: 9px; }
+.calendar-day-heading { margin: 20px 0 10px; font-size: 13px; text-transform: capitalize; }
+.preview-wrap { display: grid; gap: 8px; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; text-align: left; }
+.preview-card { padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); color: var(--text); }
+.preview-card .service-type { margin-bottom: 7px; }
+.preview-card h3 { margin: 0 0 6px; font-size: 15px; }
+.preview-card p { margin: 0 0 10px; color: var(--muted); font-size: 11px; }
+.preview-capacity { color: var(--cyan); font-size: 10px; font-weight: 800; }
 .delete-schedule { min-width: 36px; min-height: 36px; padding: 0 10px; }
 
 .member-panel { margin-bottom: 14px; }
@@ -126,6 +153,8 @@ html:not(.dark) .admin-input, html:not(.dark) .admin-select { background: #f2f6f
     background: rgba(18, 31, 52, 0.84);
 }
 .member-name { overflow-wrap: anywhere; margin: 0; color: var(--text); font-size: 12px; font-weight: 700; }
+.member-info { min-width: 0; }
+.member-assignment-count { display: block; margin-top: 5px; color: var(--muted); font-size: 10px; }
 .member-actions { display: flex; flex: 0 0 auto; gap: 6px; }
 .member-empty { grid-column: 1 / -1; padding: 26px; border: 1px dashed var(--line); border-radius: 13px; color: var(--muted); text-align: center; font-size: 12px; }
 
@@ -159,6 +188,8 @@ html:not(.dark) .admin-input, html:not(.dark) .admin-select { background: #f2f6f
 @media (max-width: 760px) {
     .members-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .admin-topbar { margin-bottom: 28px; }
+    .schedule-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .search-control { grid-column: 1 / -1; }
 }
 
 @media (max-width: 520px) {
@@ -171,6 +202,13 @@ html:not(.dark) .admin-input, html:not(.dark) .admin-select { background: #f2f6f
     .panel-heading { align-items: flex-start; flex-direction: column; }
     .schedule-panel-actions { align-items: stretch; flex-direction: column; }
     .schedule-panel-actions .filter-control { width: 100%; }
+    .dashboard-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .schedule-tools { grid-template-columns: 1fr; }
+    .search-control { grid-column: auto; }
+    .view-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .calendar-day { min-height: 48px; padding: 5px; font-size: 10px; }
+    .calendar-day small { font-size: 8px; }
+    .schedule-calendar { padding: 12px; }
     .members-grid { grid-template-columns: 1fr; }
     .member-form { flex-direction: column; }
     .admin-schedule-list .card-bottom { align-items: stretch; }
