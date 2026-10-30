@@ -7,7 +7,7 @@ let selectedScheduleId = null;
 let membersCache = {};
 let schedulesCache = {};
 let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-let selectedCalendarDate = getLocalDateKey(new Date());
+let selectedCalendarDate = null;
 
 // --- 2. TEMPLATES (The "Ghost" UI) ---
 const UI_LOGIN = `
@@ -80,6 +80,13 @@ const UI_APP = `
             </div>
         </div>
         <section id="schedule-calendar" class="schedule-calendar" aria-label="Kalender jadwal misa"></section>
+        <section class="schedule-agenda">
+            <div class="agenda-heading">
+                <div><h2 id="agenda-title">Daftar misa mendatang</h2><p id="agenda-description">Pilih misa di bawah untuk menambah petugas, mengedit, atau mengelola jadwal.</p></div>
+                <button id="agenda-show-all" onclick="showAllUpcomingSchedules()" class="secondary-button hidden">TAMPILKAN SEMUA</button>
+            </div>
+            <div id="schedule-agenda-list" class="schedule-list admin-schedule-list"></div>
+        </section>
     </section>
 
     <section id="tab-tayang" class="tab-content hidden">
@@ -236,6 +243,7 @@ function initSchedulesListener() {
         renderScheduledSchedules();
         renderDashboardSummary();
         renderCalendar();
+        renderScheduleAgenda();
         renderMembers();
     }, error => Swal.fire('Gagal Memuat Jadwal', error.message, 'error'));
 }
@@ -284,6 +292,7 @@ function renderDashboardSummary() {
 
 function refreshScheduleViews() {
     renderCalendar();
+    renderScheduleAgenda();
 }
 
 function renderScheduleCard(id, data) {
@@ -456,16 +465,43 @@ function renderCalendar() {
         const eventCount = eventCounts[dateKey] || 0;
         return `<button class="calendar-day ${inMonth ? '' : 'outside-month'} ${selectedCalendarDate === dateKey ? 'selected-day' : ''} ${eventCount ? 'has-events' : ''}" onclick="selectCalendarDate('${dateKey}')"><span>${date.getDate()}</span>${eventCount ? `<small>${eventCount} misa</small>` : ''}</button>`;
     }).join('');
-    const selectedSchedules = schedules.filter(([, schedule]) => schedule.tanggal === selectedCalendarDate);
     calendar.innerHTML = `<div class="calendar-heading">
             <button onclick="changeCalendarMonth(-1)" class="secondary-button" aria-label="Bulan sebelumnya">‹</button>
             <h2>${calendarMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</h2>
             <button onclick="changeCalendarMonth(1)" class="secondary-button" aria-label="Bulan berikutnya">›</button>
         </div>
         <div class="calendar-grid calendar-weekdays">${['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map(day => `<span>${day}</span>`).join('')}</div>
-        <div class="calendar-grid">${dayCells}</div>
-        <h3 class="calendar-day-heading">${formatScheduleDate(selectedCalendarDate)}</h3>
-        <div class="schedule-list admin-schedule-list">${selectedSchedules.map(([id, data]) => renderScheduleCard(id, data)).join('') || '<p class="empty-state">Tidak ada misa pada tanggal ini.</p>'}</div>`;
+        <div class="calendar-grid">${dayCells}</div>`;
+}
+
+function renderScheduleAgenda() {
+    const list = document.getElementById('schedule-agenda-list');
+    const title = document.getElementById('agenda-title');
+    const description = document.getElementById('agenda-description');
+    const showAllButton = document.getElementById('agenda-show-all');
+    if(!list || !title || !description || !showAllButton) return;
+
+    const schedules = getUpcomingSchedules().filter(([, schedule]) =>
+        schedule.kategori === currentFilter &&
+        (!selectedCalendarDate || schedule.tanggal === selectedCalendarDate)
+    );
+    if(selectedCalendarDate) {
+        title.textContent = `Misa ${formatScheduleDate(selectedCalendarDate)}`;
+        description.textContent = 'Kelola petugas dan informasi misa pada tanggal ini.';
+        showAllButton.classList.remove('hidden');
+    } else {
+        title.textContent = 'Daftar misa mendatang';
+        description.textContent = 'Pilih misa di bawah untuk menambah petugas, mengedit, atau mengelola jadwal.';
+        showAllButton.classList.add('hidden');
+    }
+    list.innerHTML = schedules.map(([id, schedule]) => renderScheduleCard(id, schedule)).join('') ||
+        `<p class="empty-state">${selectedCalendarDate ? 'Tidak ada misa untuk jenis ini pada tanggal yang dipilih.' : 'Belum ada misa mendatang untuk jenis ini.'}</p>`;
+}
+
+function showAllUpcomingSchedules() {
+    selectedCalendarDate = null;
+    renderCalendar();
+    renderScheduleAgenda();
 }
 
 function changeCalendarMonth(offset) {
@@ -478,6 +514,8 @@ function selectCalendarDate(date) {
     const selectedMonth = parseScheduleDate(date);
     calendarMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
     renderCalendar();
+    renderScheduleAgenda();
+    document.querySelector('.schedule-agenda').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function setManualScheduleVisibility(scheduleId, isVisible) {

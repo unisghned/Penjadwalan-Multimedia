@@ -127,7 +127,10 @@ html:not(.dark) .admin-input, html:not(.dark) .admin-select { background: #f2f6f
 .calendar-day.outside-month { opacity: 0.4; }
 .calendar-day.has-events { background: rgba(41, 199, 217, 0.1); }
 .calendar-day small { color: var(--cyan); font-size: 9px; }
-.calendar-day-heading { margin: 20px 0 10px; font-size: 13px; text-transform: capitalize; }
+.schedule-agenda { margin-top: 24px; scroll-margin-top: 20px; }
+.agenda-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
+.agenda-heading h2 { margin: 0; font-size: 17px; }
+.agenda-heading p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
 .duplicate-button { width: 36px; min-width: 36px; padding: 0; font-size: 17px; }
 .delete-schedule { min-width: 36px; min-height: 36px; padding: 0 10px; }
 
