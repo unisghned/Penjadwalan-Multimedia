@@ -49,6 +49,7 @@ const UI_APP = `
 
     <nav class="admin-tabs" aria-label="Bagian administrasi">
         <button onclick="switchTab('jadwal')" id="btn-tab-jadwal" class="tab-btn active-tab">JADWAL</button>
+        <button onclick="switchTab('tayang')" id="btn-tab-tayang" class="tab-btn">TAYANG TERJADWAL <span id="scheduled-count" class="tab-count">0</span></button>
         <button onclick="switchTab('anggota')" id="btn-tab-anggota" class="tab-btn">ANGGOTA</button>
     </nav>
 
@@ -66,6 +67,15 @@ const UI_APP = `
             </div>
         </div>
         <div id="schedule-list" class="schedule-list admin-schedule-list"></div>
+    </section>
+
+    <section id="tab-tayang" class="tab-content hidden">
+        <div class="admin-panel">
+            <div class="panel-heading">
+                <div><h2>Penayangan misa terjadwal</h2><p>Jadwal di sini tidak bercampur dengan daftar misa langsung. Anda bisa menampilkannya lebih awal kapan saja.</p></div>
+            </div>
+        </div>
+        <div id="scheduled-schedule-list" class="schedule-list admin-schedule-list"></div>
     </section>
 
     <section id="tab-anggota" class="tab-content hidden">
@@ -141,6 +151,7 @@ function logout() { auth.signOut().then(() => location.reload()); }
 function initAppModules() {
     initTheme();
     setFilter('Biasa');
+    renderScheduledSchedules();
     initClock();
     initMembersListener();
     
@@ -246,6 +257,7 @@ function renderSchedules() {
         snap.forEach(child => {
             const data = child.val(); 
             if(data.kategori !== currentFilter) return;
+            if(data.visibility === 'scheduled') return;
 
             // LOGIC FILTER TANGGAL:
             // Ubah string tanggal dari Firebase (YYYY-MM-DD) jadi objek Date
@@ -299,6 +311,73 @@ function renderSchedules() {
             </article>`;
         });
     });
+}
+
+function renderScheduledSchedules() {
+    db.ref('schedules').on('value', snap => {
+        const list = document.getElementById('scheduled-schedule-list');
+        const countLabel = document.getElementById('scheduled-count');
+        if(!list || !countLabel) return;
+        list.innerHTML = '';
+        let scheduledCount = 0;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        snap.forEach(child => {
+            const data = child.val();
+            if(data.visibility !== 'scheduled') return;
+            const misaDate = parseScheduleDate(data.tanggal);
+            if(!misaDate || misaDate < today) return;
+
+            scheduledCount++;
+            const publishDate = getSchedulePublishDate(data);
+            const isManuallyPublished = data.manualPublished === true;
+            const isAutomaticallyPublished = publishDate && publishDate <= today;
+            const status = isManuallyPublished
+                ? 'Ditampilkan lebih awal secara manual'
+                : isAutomaticallyPublished
+                    ? 'Sudah tayang sesuai jadwal otomatis'
+                    : `Mulai tayang ${publishDate ? publishDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}`;
+            const limit = getScheduleMaxPetugas(data);
+            const assignedCount = data.petugas ? Object.keys(data.petugas).length : 0;
+            const actionButton = isManuallyPublished
+                ? `<button onclick="setManualScheduleVisibility('${child.key}', false)" class="secondary-button">KEMBALIKAN KE JADWAL H-</button>`
+                : isAutomaticallyPublished
+                    ? '<button class="secondary-button" disabled>SUDAH TAYANG</button>'
+                    : `<button onclick="setManualScheduleVisibility('${child.key}', true)" class="primary-button">TAMPILKAN SEKARANG</button>`;
+
+            list.innerHTML += `
+                <article class="schedule-card">
+                    <div class="card-main">
+                        <span class="service-type ${data.kategori === 'Besar' ? 'large' : ''}">${escapeHtml(data.kategori || '')}</span>
+                        <h3 class="service-name">${escapeHtml(data.namaMisa || 'MISA')}</h3>
+                        <p class="service-date">${escapeHtml(data.tanggal || '')} · ${escapeHtml(data.jam || '')}</p>
+                        <p class="schedule-visibility">${escapeHtml(status)}</p>
+                    </div>
+                    <div class="scheduled-actions">
+                        <span class="capacity ${assignedCount >= limit ? 'capacity-full' : ''}">${assignedCount}/${limit} PETUGAS</span>
+                        ${actionButton}
+                        <button onclick="editSchedule('${child.key}')" class="icon-button">EDIT INFO</button>
+                        <button onclick="hapusSatuJadwal('${child.key}')" class="danger-button delete-schedule">HAPUS</button>
+                    </div>
+                </article>`;
+        });
+
+        countLabel.textContent = scheduledCount;
+        if(scheduledCount === 0) {
+            list.innerHTML = '<p class="empty-state">Belum ada misa yang dijadwalkan untuk tayang nanti.</p>';
+        }
+    });
+}
+
+function setManualScheduleVisibility(scheduleId, isVisible) {
+    const update = isVisible ? true : null;
+    const message = isVisible
+        ? 'Jadwal ini akan langsung terlihat di halaman utama.'
+        : 'Jadwal kembali mengikuti tanggal tayang H- yang ditentukan.';
+    return db.ref(`schedules/${scheduleId}/manualPublished`).set(update)
+        .then(() => Swal.fire(isVisible ? 'Jadwal Ditampilkan' : 'Penayangan Diatur Ulang', message, 'success'))
+        .catch(error => Swal.fire('Gagal Memperbarui Penayangan', error.message, 'error'));
 }
 
 function buatJadwal() {
@@ -658,8 +737,7 @@ function hapusSatuJadwal(id) { Swal.fire({ title: 'Hapus?', icon: 'warning', sho
 function switchTab(t) {
     document.querySelectorAll('.tab-content').forEach(x => x.classList.add('hidden'));
     document.getElementById(`tab-${t}`).classList.remove('hidden');
-    document.getElementById('btn-tab-jadwal').classList.remove('active-tab');
-    document.getElementById('btn-tab-anggota').classList.remove('active-tab');
+    document.querySelectorAll('.admin-tabs .tab-btn').forEach(button => button.classList.remove('active-tab'));
     document.getElementById(`btn-tab-${t}`).classList.add('active-tab');
 }
 

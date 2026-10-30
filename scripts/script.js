@@ -136,7 +136,8 @@ function renderGuestScheduleSnapshot(snap) {
         const tglJadwal = parseScheduleDate(data.tanggal);
         const tanggalTampil = getSchedulePublishDate(data);
         if(!tglJadwal || tglJadwal < hariIni) return;
-        if(data.visibility === 'scheduled' && (!tanggalTampil || tanggalTampil > hariIni)) return;
+        if(data.visibility === 'scheduled' && data.manualPublished !== true &&
+            (!tanggalTampil || tanggalTampil > hariIni)) return;
 
         visibleSchedules++;
         const lim = getScheduleMaxPetugas(data);

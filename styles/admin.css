@@ -39,6 +39,7 @@ html:not(.dark) {
 }
 .tab-btn:hover, .tab-btn.active-tab { color: var(--cyan); }
 .tab-btn.active-tab::after { position: absolute; right: 12px; bottom: -1px; left: 12px; height: 2px; background: var(--cyan); content: ''; }
+.tab-count { display: inline-flex; min-width: 18px; height: 18px; align-items: center; justify-content: center; margin-left: 5px; padding: 0 5px; border-radius: 999px; color: #06212d; background: var(--cyan); font-size: 9px; letter-spacing: 0; }
 .tab-content { animation: reveal 300ms ease-out both; }
 
 .admin-panel {
@@ -105,6 +106,9 @@ html:not(.dark) .admin-input, html:not(.dark) .admin-select { background: #f2f6f
 .btn-edit-petugas:hover { background: rgba(41, 199, 217, 0.1); }
 .btn-remove-petugas { padding: 0; border: 0; color: var(--coral); background: transparent; font-weight: 800; }
 .schedule-admin-actions { display: flex; align-items: center; gap: 8px; }
+.scheduled-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.scheduled-actions button:disabled { opacity: 0.6; cursor: default; }
+.empty-state { padding: 20px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); text-align: center; font-size: 12px; }
 .delete-schedule { min-width: 36px; min-height: 36px; padding: 0 10px; }
 
 .member-panel { margin-bottom: 14px; }
@@ -171,5 +175,7 @@ html:not(.dark) .admin-input, html:not(.dark) .admin-select { background: #f2f6f
     .member-form { flex-direction: column; }
     .admin-schedule-list .card-bottom { align-items: stretch; }
     .admin-schedule-list .card-actions { flex-wrap: wrap; }
+    .admin-schedule-list .scheduled-actions { justify-content: flex-start; }
+    .admin-tabs { overflow-x: auto; }
     .login-shell .admin-topbar { margin-bottom: 28px; }
 }
