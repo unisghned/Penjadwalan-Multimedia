@@ -6,6 +6,7 @@ let currentFilter = 'Biasa';
 let selectedScheduleId = null;
 let membersCache = {};
 let schedulesCache = {};
+let scheduleViewMode = 'list';
 let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selectedCalendarDate = null;
 
@@ -76,17 +77,23 @@ const UI_APP = `
                     <button onclick="setFilter('Biasa')" id="filter-biasa" class="filter-button is-active">BIASA</button>
                     <button onclick="setFilter('Besar')" id="filter-besar" class="filter-button">BESAR</button>
                 </div>
-                <button onclick="buatJadwal()" class="primary-button">+ TAMBAH MISA</button>
+                <div class="schedule-panel-actions-right">
+                    <div class="view-toggle" aria-label="Mode tampilan jadwal">
+                        <button id="view-list-button" onclick="setScheduleView('list')" class="secondary-button is-selected">DAFTAR</button>
+                        <button id="view-calendar-button" onclick="setScheduleView('calendar')" class="secondary-button">KALENDER</button>
+                    </div>
+                    <button onclick="buatJadwal()" class="primary-button">+ TAMBAH MISA</button>
+                </div>
             </div>
         </div>
-        <section id="schedule-calendar" class="schedule-calendar" aria-label="Kalender jadwal misa"></section>
-        <section class="schedule-agenda">
+        <section id="schedule-agenda" class="schedule-agenda">
             <div class="agenda-heading">
                 <div><h2 id="agenda-title">Daftar misa mendatang</h2><p id="agenda-description">Pilih misa di bawah untuk menambah petugas, mengedit, atau mengelola jadwal.</p></div>
                 <button id="agenda-show-all" onclick="showAllUpcomingSchedules()" class="secondary-button hidden">TAMPILKAN SEMUA</button>
             </div>
             <div id="schedule-agenda-list" class="schedule-list admin-schedule-list"></div>
         </section>
+        <section id="schedule-calendar" class="schedule-calendar hidden" aria-label="Kalender jadwal misa"></section>
     </section>
 
     <section id="tab-tayang" class="tab-content hidden">
@@ -291,8 +298,19 @@ function renderDashboardSummary() {
 }
 
 function refreshScheduleViews() {
-    renderCalendar();
     renderScheduleAgenda();
+    if(scheduleViewMode === 'calendar') renderCalendar();
+}
+
+function setScheduleView(view) {
+    scheduleViewMode = view;
+    const agenda = document.getElementById('schedule-agenda');
+    const calendar = document.getElementById('schedule-calendar');
+    agenda.classList.toggle('hidden', view !== 'list');
+    calendar.classList.toggle('hidden', view !== 'calendar');
+    document.getElementById('view-list-button').classList.toggle('is-selected', view === 'list');
+    document.getElementById('view-calendar-button').classList.toggle('is-selected', view === 'calendar');
+    if(view === 'calendar') renderCalendar();
 }
 
 function renderScheduleCard(id, data) {
@@ -500,7 +518,6 @@ function renderScheduleAgenda() {
 
 function showAllUpcomingSchedules() {
     selectedCalendarDate = null;
-    renderCalendar();
     renderScheduleAgenda();
 }
 
@@ -515,7 +532,8 @@ function selectCalendarDate(date) {
     calendarMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
     renderCalendar();
     renderScheduleAgenda();
-    document.querySelector('.schedule-agenda').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setScheduleView('list');
+    document.getElementById('schedule-agenda').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function setManualScheduleVisibility(scheduleId, isVisible) {
