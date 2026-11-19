@@ -189,6 +189,24 @@ html:not(.dark) .admin-input, html:not(.dark) .admin-select { background: #f2f6f
     .admin-topbar { margin-bottom: 28px; }
 }
 
+@media (max-width: 900px) {
+    #scheduled-schedule-list .schedule-card { grid-template-columns: minmax(0, 1fr); }
+    #scheduled-schedule-list .scheduled-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-column: 1;
+        gap: 10px;
+        justify-content: initial;
+        min-width: 0;
+    }
+    #scheduled-schedule-list .scheduled-actions .capacity,
+    #scheduled-schedule-list .scheduled-actions > .primary-button,
+    #scheduled-schedule-list .scheduled-actions > .secondary-button {
+        grid-column: 1 / -1;
+    }
+    #scheduled-schedule-list .scheduled-actions > button { width: 100%; }
+}
+
 @media (max-width: 520px) {
     .admin-shell { width: min(100% - 28px, 1040px); padding-top: 18px; }
     .admin-topbar { align-items: flex-start; }
